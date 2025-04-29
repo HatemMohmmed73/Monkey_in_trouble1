@@ -4,9 +4,11 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.math.Rectangle;
+import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.Disposable;
 import com.monkeyintrouble.entities.SawTrap;
+import com.monkeyintrouble.entities.Player;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -19,6 +21,10 @@ public class GameMap implements Disposable {
     private boolean asset56Changed = false;
     private boolean asset29Changed = false;
     private final List<Position> originalDoorPositions = new ArrayList<>();  // Track original door positions
+    private float teleportCooldown = 0f;  // Add teleport cooldown timer
+    private static final float TELEPORT_COOLDOWN_DURATION = 1.0f;  // 1 second cooldown
+    private boolean isCurrentlyTeleporting = false;  // Add flag to track teleport state
+    private Player player;  // Add player reference
 
     public static class Room {
         final int[][] mapData;
@@ -161,6 +167,14 @@ public class GameMap implements Disposable {
         // Update saw traps
         for (SawTrap sawTrap : sawTraps) {
             sawTrap.update(deltaTime);
+        }
+
+        // Update teleport cooldown
+        if (teleportCooldown > 0) {
+            teleportCooldown -= deltaTime;
+            if (teleportCooldown <= 0) {
+                isCurrentlyTeleporting = false;  // Reset teleport state when cooldown ends
+            }
         }
     }
 
@@ -353,7 +367,12 @@ public class GameMap implements Disposable {
         System.out.println("Map Reset - All doors closed and buttons reset!");
     }
 
-    public void handleAssetCollision(Rectangle playerBounds) {
+    public Vector2 handleAssetCollision(Rectangle playerBounds) {
+        // Skip if we're currently teleporting or on cooldown
+        if (isCurrentlyTeleporting || teleportCooldown > 0) {
+            return null;
+        }
+
         for (Room room : rooms) {
             for (int y = 0; y < room.mapData.length; y++) {
                 for (int x = 0; x < room.mapData[y].length; x++) {
@@ -367,13 +386,118 @@ public class GameMap implements Disposable {
                         if (tileId == 56) {
                             asset56Changed = true;
                             System.out.println("Button (56) pressed at position: " + x + "," + y);
-                            // When button is pressed, open the door
                             openDoor();
+                        } else if (tileId == 34 && !isCurrentlyTeleporting) {
+                            // Teleport to right top room
+                            Vector2 destination = findTeleportDestination();
+                            if (destination != null) {
+                                isCurrentlyTeleporting = true;
+                                teleportCooldown = TELEPORT_COOLDOWN_DURATION;
+                                System.out.println("Found teleport destination: " + destination.x + "," + destination.y);
+                                return destination;
+                            } else {
+                                System.out.println("Error: Could not find teleport destination (tile 66)!");
+                            }
+                        } else if ((tileId == 67 || tileId == 68) && !isCurrentlyTeleporting) {
+                            // Teleport back to start room
+                            Vector2 destination = findReturnTeleportDestination();
+                            if (destination != null) {
+                                isCurrentlyTeleporting = true;
+                                teleportCooldown = TELEPORT_COOLDOWN_DURATION;
+                                System.out.println("Found return teleport destination: " + destination.x + "," + destination.y);
+                                return destination;
+                            } else {
+                                System.out.println("Error: Could not find return teleport destination (tile 34)!");
+                            }
+                        } else if (tileId == 63) {
+                            // Transform into ghost mode only if not already in ghost mode
+                            if (player != null && !player.isGhostMode()) {
+                                System.out.println("Player collided with ghost transformation tile (63)");
+                                player.setGhostMode(true);
+                            }
                         }
                     }
                 }
             }
         }
+        return null;
+    }
+
+    private Vector2 findTeleportDestination() {
+        // The right top room is at index 1 in the rooms array
+        Room rightTopRoom = rooms.get(1);
+
+        System.out.println("Searching for destination in right top room. Dimensions: " +
+                          rightTopRoom.getWidth() + "x" + rightTopRoom.getHeight());
+
+        // First find the teleport destination tile
+        int destX = -1, destY = -1;
+        for (int y = 0; y < rightTopRoom.mapData.length; y++) {
+            for (int x = 0; x < rightTopRoom.mapData[y].length; x++) {
+                if (rightTopRoom.mapData[y][x] == 66) {
+                    destX = x;
+                    destY = y;
+                    break;
+                }
+            }
+            if (destX != -1) break;
+        }
+
+        if (destX != -1) {
+            // Found the destination tile, now find a safe spot next to it
+            // Try to place the player to the right of the destination
+            int safeX = destX + 2; // Two tiles to the right
+            int safeY = destY;
+
+            // Calculate world coordinates for the safe position
+            float worldX = (safeX + rightTopRoom.offsetX) * TILE_SIZE;
+            float worldY = (rightTopRoom.mapData.length - safeY - 1) * TILE_SIZE + (rightTopRoom.offsetY * TILE_SIZE);
+
+            System.out.println("Found destination tile at: " + destX + "," + destY);
+            System.out.println("Placing player at safe position: " + safeX + "," + safeY);
+            System.out.println("World coordinates: " + worldX + "," + worldY);
+
+            return new Vector2(worldX, worldY);
+        }
+        return null;
+    }
+
+    private Vector2 findReturnTeleportDestination() {
+        // The main room is at index 0 in the rooms array
+        Room mainRoom = rooms.get(0);
+
+        System.out.println("Searching for return destination in main room. Dimensions: " +
+                          mainRoom.getWidth() + "x" + mainRoom.getHeight());
+
+        // Find the teleport destination tile (34.png)
+        int destX = -1, destY = -1;
+        for (int y = 0; y < mainRoom.mapData.length; y++) {
+            for (int x = 0; x < mainRoom.mapData[y].length; x++) {
+                if (mainRoom.mapData[y][x] == 34) {
+                    destX = x;
+                    destY = y;
+                    break;
+                }
+            }
+            if (destX != -1) break;
+        }
+
+        if (destX != -1) {
+            // Found the destination tile, now find a safe spot two blocks to the left
+            int safeX = destX - 2; // Two tiles to the left
+            int safeY = destY;
+
+            // Calculate world coordinates for the safe position
+            float worldX = (safeX + mainRoom.offsetX) * TILE_SIZE;
+            float worldY = (mainRoom.mapData.length - safeY - 1) * TILE_SIZE + (mainRoom.offsetY * TILE_SIZE);
+
+            System.out.println("Found return destination tile at: " + destX + "," + destY);
+            System.out.println("Placing player at safe position: " + safeX + "," + safeY);
+            System.out.println("World coordinates: " + worldX + "," + worldY);
+
+            return new Vector2(worldX, worldY);
+        }
+        return null;
     }
 
     private void openDoor() {
@@ -406,5 +530,9 @@ public class GameMap implements Disposable {
 
             Gdx.app.log("GameMap", "Opening door at position: " + pos.x + "," + pos.y + " [" + pos.roomIndex + "s]");
         }
+    }
+
+    public void setPlayer(Player player) {
+        this.player = player;
     }
 }

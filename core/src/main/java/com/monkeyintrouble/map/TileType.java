@@ -72,8 +72,7 @@ public enum TileType {
             this == WALL_BOTTOM_RIGHT || this == WALL_CORNER_SPECIAL || this == WALL_TRANSITION ||
             this == WALL_SPECIAL || this == WALL_DAMAGED || this == WALL_PILLAR ||
             this == WALL_WINDOW || this == SPIKES || this == WALL_SPECIAL_2 ||
-            this == WALL_DARK || this == WALL_CRACK || this == WALL_MOSS ||
-            this == WALL_SLIME || this == WALL_CHAINS || this == BARS || this == WALL_22
+            this == WALL_DARK || this == WALL_CHAINS || this == BARS || this == WALL_22
         );
     }
 

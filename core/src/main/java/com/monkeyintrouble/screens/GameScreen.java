@@ -43,6 +43,7 @@ public class GameScreen implements Screen {
         float startX = 100; // Position in the first room
         float startY = 300 - (9 * 32) + 32; // Start 9 blocks lower (32 pixels per block) and then 1 block up
         this.player = new Player(gameMap, startX, startY);
+        this.gameMap.setPlayer(player);  // Set player reference in GameMap
         this.ui = new GameUI(player, this);
         // Register UI as observer for player
         this.player.addObserver(this.ui);
@@ -127,8 +128,12 @@ public class GameScreen implements Screen {
             }
         }
 
-        // Handle asset collisions
-        gameMap.handleAssetCollision(player.getBounds());
+        // Handle asset collisions and get teleport destination if any
+        Vector2 teleportDestination = gameMap.handleAssetCollision(player.getBounds());
+        if (teleportDestination != null) {
+            // Use the new teleport method
+            player.teleport(teleportDestination.x, teleportDestination.y);
+        }
 
         // Handle saw trap collision is handled in Player class
     }

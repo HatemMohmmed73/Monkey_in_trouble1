@@ -32,6 +32,9 @@ public class Player implements MonkeyObservable {
     private Texture texture;
     private boolean isJumping;
     private final List<MonkeyObserver> observers = new ArrayList<>();
+    private boolean isGhostMode = false; // New ghost mode state
+    private Texture ghostRightTexture; // New ghost textures
+    private Texture ghostLeftTexture;
 
     public Player(GameMap gameMap, float startX, float startY) {
         this.gameMap = gameMap;
@@ -42,6 +45,8 @@ public class Player implements MonkeyObservable {
         this.isFacingRight = true;
         this.currentState = new PlayerNormalState();
         texture = new Texture(com.badlogic.gdx.Gdx.files.internal("58.png")); // Default to player facing right
+        ghostRightTexture = new Texture(com.badlogic.gdx.Gdx.files.internal("60.png")); // Ghost right texture
+        ghostLeftTexture = new Texture(com.badlogic.gdx.Gdx.files.internal("61.png")); // Ghost left texture
         isJumping = false;
     }
 
@@ -118,7 +123,14 @@ public class Player implements MonkeyObservable {
     }
 
     public void render(SpriteBatch batch) {
-        currentState.render(this, batch);
+        if (isGhostMode) {
+            // Use ghost textures based on facing direction
+            Texture currentGhostTexture = isFacingRight ? ghostRightTexture : ghostLeftTexture;
+            batch.draw(currentGhostTexture, position.x, position.y, 24, 24);
+        } else {
+            // Use normal textures
+            currentState.render(this, batch);
+        }
     }
 
     @Override
@@ -164,7 +176,9 @@ public class Player implements MonkeyObservable {
     }
 
     public void dispose() {
-        currentState.dispose();
+        texture.dispose();
+        ghostRightTexture.dispose();
+        ghostLeftTexture.dispose();
     }
 
     public Vector2 getPosition() {
@@ -212,5 +226,24 @@ public class Player implements MonkeyObservable {
 
     public void resetState() {
         setState(new PlayerNormalState());
+    }
+
+    public void teleport(float x, float y) {
+        position.set(x, y);
+        bounds.x = x;
+        bounds.y = y;
+        System.out.println("Player teleported to: " + x + "," + y);
+    }
+
+    public void setGhostMode(boolean ghostMode) {
+        this.isGhostMode = ghostMode;
+        // Notify observers about the state change
+        for (MonkeyObserver observer : observers) {
+            observer.onGhostModeChanged(ghostMode);
+        }
+    }
+
+    public boolean isGhostMode() {
+        return isGhostMode;
     }
 }

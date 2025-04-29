@@ -116,6 +116,11 @@ public class GameUI implements MonkeyObserver {
         System.out.println("Bananas: " + bananaCount);
     }
 
+    @Override
+    public void onGhostModeChanged(boolean isGhostMode) {
+        System.out.println("Player ghost mode changed to: " + isGhostMode);
+    }
+
     public void render(SpriteBatch batch) {
         stage.act();
         stage.draw();
