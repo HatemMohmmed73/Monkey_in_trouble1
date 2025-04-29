@@ -1,0 +1,11 @@
+// Applies the foojay-resolver plugin (optional but safe to keep)
+plugins {
+  id("org.gradle.toolchains.foojay-resolver-convention") version "0.9.0"
+}
+
+// Set the root project name
+rootProject.name = 'MonkeyInTrouble'
+
+// Include all project modules
+include 'core'
+include 'desktop'

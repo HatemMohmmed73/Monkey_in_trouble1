@@ -1,0 +1,44 @@
+plugins {
+  id 'java'
+  id 'application'
+}
+
+repositories {
+  mavenCentral()
+}
+
+dependencies {
+  api project(":core")
+  api "com.badlogicgames.gdx:gdx-backend-lwjgl3:$gdxVersion"
+  api "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-desktop"
+  api "com.badlogicgames.gdx:gdx-box2d-platform:$gdxVersion:natives-desktop"
+  api "com.badlogicgames.gdx:gdx-freetype-platform:$gdxVersion:natives-desktop"
+}
+
+application {
+  mainClass = "com.monkeyintrouble.desktop.DesktopLauncher"
+  applicationDefaultJvmArgs = ["-XstartOnFirstThread"]
+}
+
+java {
+  sourceCompatibility = JavaVersion.VERSION_11
+  targetCompatibility = JavaVersion.VERSION_11
+}
+
+sourceSets {
+  main {
+    java {
+      srcDirs = ['src/main/java']
+    }
+    resources {
+      srcDirs = ["../assets"]
+    }
+  }
+}
+
+[compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
+
+run {
+  workingDir = file("../assets")
+  setIgnoreExitValue(true)
+}

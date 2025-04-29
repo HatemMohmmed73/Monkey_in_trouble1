@@ -1,0 +1,13 @@
+{
+    "frames": [],
+    "meta": {
+        "app": "Aseprite simulated export",
+        "version": "1.0",
+        "image": "level_1_spritesheet.png",
+        "size": {
+            "w": 256,
+            "h": 256
+        },
+        "scale": "1"
+    }
+}
