@@ -68,8 +68,10 @@
 7.png
 70.png
 71.png
+72.png
 8.png
 9.png
+ghost.png
 image.png
 libgdx.png
 tiles.png

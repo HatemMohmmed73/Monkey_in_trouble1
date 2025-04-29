@@ -13,6 +13,8 @@ import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.monkeyintrouble.observers.MonkeyObserver;
 import com.monkeyintrouble.entities.Player;
+import com.badlogic.gdx.graphics.g2d.GlyphLayout;
+import com.monkeyintrouble.screens.GameScreen;
 
 public class GameUI implements MonkeyObserver {
 
@@ -33,9 +35,12 @@ public class GameUI implements MonkeyObserver {
     private Texture emptyHeartTexture; // heart2.png
     private Texture bananaTexture;     // banana1.png
     private Texture emptyBananaTexture; // banana2.png
+    private boolean isGameOver = false;
+    private final GameScreen gameScreen;  // Add reference to GameScreen
 
-    public GameUI(Player player) {
+    public GameUI(Player player, GameScreen gameScreen) {  // Modified constructor
         this.player = player;
+        this.gameScreen = gameScreen;  // Store reference to GameScreen
         font = new BitmapFont();
         font.setColor(Color.WHITE);
         font.getData().setScale(2);
@@ -85,12 +90,14 @@ public class GameUI implements MonkeyObserver {
 
     private void startGame() {
         System.out.println("Game Started!");
+        isGameOver = false;
     }
 
     private void restartGame() {
-        if (player != null) {
-            player.reset();
-            System.out.println("Game Restarted - Monkey reset to starting position!");
+        if (gameScreen != null) {
+            gameScreen.reset();  // This will reset everything: player, map, ghost, and game state
+            isGameOver = false;
+            System.out.println("Game Fully Restarted - All elements restored to original state!");
         }
     }
 
@@ -98,6 +105,9 @@ public class GameUI implements MonkeyObserver {
     public void onHealthChanged(int hearts) {
         this.hearts = hearts;
         System.out.println("Health: " + hearts);
+        if (hearts <= 0) {
+            isGameOver = true;
+        }
     }
 
     @Override
@@ -109,6 +119,15 @@ public class GameUI implements MonkeyObserver {
     public void render(SpriteBatch batch) {
         stage.act();
         stage.draw();
+
+        if (isGameOver) {
+            // Draw "GAME OVER" text in the center of the screen
+            GlyphLayout layout = new GlyphLayout(font, "GAME OVER");
+            float x = (Gdx.graphics.getWidth() - layout.width) / 2;
+            float y = (Gdx.graphics.getHeight() + layout.height) / 2;
+            font.draw(batch, "GAME OVER", x, y);
+            return;
+        }
 
         // Draw hearts
         for (int i = 0; i < MAX_HEARTS; i++) {

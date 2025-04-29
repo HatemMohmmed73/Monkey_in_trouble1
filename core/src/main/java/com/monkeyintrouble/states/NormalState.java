@@ -24,8 +24,8 @@ public class NormalState implements MonkeyState {
         batch.draw(currentTexture,
             monkey.getPosition().x,
             monkey.getPosition().y,
-            32, // width
-            32  // height
+            24, // width
+            24  // height
         );
     }
 

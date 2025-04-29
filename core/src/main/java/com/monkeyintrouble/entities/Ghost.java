@@ -17,7 +17,7 @@ public class Ghost {
         this.position = new Vector2(x, y);
         this.startPosition = new Vector2(x, y);
         this.bounds = new Rectangle(x, y, 32, 32);
-        this.texture = new Texture("ghost.png");
+        this.texture = new Texture(com.badlogic.gdx.Gdx.files.internal("72.png"));
     }
 
     public void update(float deltaTime) {

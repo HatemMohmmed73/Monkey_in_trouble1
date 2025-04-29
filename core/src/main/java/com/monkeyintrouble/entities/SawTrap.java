@@ -7,16 +7,16 @@ import com.badlogic.gdx.utils.Disposable;
 
 public class SawTrap implements Disposable {
     private static final float TILE_SIZE = 32f;
-    private static final float POSITION_DURATION = 0.5f; // Time between position changes
+    private static final float POSITION_DURATION = 1.0f; // Time between position changes
     private static final int NUM_POSITIONS = 3; // Number of positions the saw can be in
 
     // Texture indices for the saw trap
     private static final int TRAP_LEFT = 43;
     private static final int TRAP_MIDDLE = 44;
     private static final int TRAP_RIGHT = 45;
-    private static final int SAW_LEFT = 46;
-    private static final int SAW_MIDDLE = 47;
-    private static final int SAW_RIGHT = 48;
+    private static final int SAW_LEFT = 47;
+    private static final int SAW_MIDDLE = 48;
+    private static final int SAW_RIGHT = 49;
 
     private final float startX;
     private final float y;

@@ -7,6 +7,8 @@ import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.Disposable;
 import com.monkeyintrouble.entities.SawTrap;
+import java.util.ArrayList;
+import java.util.List;
 
 public class GameMap implements Disposable {
     private static final int TILE_SIZE = 32;
@@ -14,6 +16,9 @@ public class GameMap implements Disposable {
     private final Texture[] tileTextures;
     private final Array<Box> boxes;
     private final Array<SawTrap> sawTraps;
+    private boolean asset56Changed = false;
+    private boolean asset29Changed = false;
+    private final List<Position> originalDoorPositions = new ArrayList<>();  // Track original door positions
 
     public static class Room {
         final int[][] mapData;
@@ -27,6 +32,27 @@ public class GameMap implements Disposable {
             this.offsetX = offsetX;
             this.offsetY = offsetY;
         }
+
+        public int getHeight() {
+            return mapData.length;
+        }
+
+        public int getWidth() {
+            return mapData[0].length;
+        }
+
+        public int getTile(int x, int y) {
+            if (y >= 0 && y < mapData.length && x >= 0 && x < mapData[y].length) {
+                return mapData[y][x];
+            }
+            return -1; // Assuming -1 represents an invalid tile
+        }
+
+        public void setTile(int x, int y, int tileId) {
+            if (y >= 0 && y < mapData.length && x >= 0 && x < mapData[y].length) {
+                mapData[y][x] = tileId;
+            }
+        }
     }
 
     public static class Box {
@@ -39,6 +65,18 @@ public class GameMap implements Disposable {
             this.bounds = bounds;
             this.originalX = originalX;
             this.originalY = originalY;
+            this.roomIndex = roomIndex;
+        }
+    }
+
+    private static class Position {
+        final int x;
+        final int y;
+        final int roomIndex;
+
+        Position(int x, int y, int roomIndex) {
+            this.x = x;
+            this.y = y;
             this.roomIndex = roomIndex;
         }
     }
@@ -61,7 +99,7 @@ public class GameMap implements Disposable {
         rooms.add(new Room(rightBottomRoom, rightRoomsX, rightTopRoom.length));
 
         // Load tile textures
-        tileTextures = new Texture[71];
+        tileTextures = new Texture[74];
         for (int i = 0; i < tileTextures.length; i++) {
             try {
                 tileTextures[i] = new Texture(Gdx.files.internal(i + ".png"));
@@ -88,6 +126,11 @@ public class GameMap implements Disposable {
                 worldY += (room.offsetY * TILE_SIZE);
 
                 Rectangle box = new Rectangle(worldX, worldY, TILE_SIZE, TILE_SIZE);
+
+                // Store original door positions
+                if (tileId == 29) {  // If it's a door tile
+                    originalDoorPositions.add(new Position(x, y, roomIndex));
+                }
 
                 if (type.isCollidable()) {
                     room.collisionBoxes.add(box);
@@ -127,6 +170,16 @@ public class GameMap implements Disposable {
             for (int y = 0; y < room.mapData.length; y++) {
                 for (int x = 0; x < room.mapData[y].length; x++) {
                     int tileId = room.mapData[y][x];
+
+                    // Handle special asset changes
+                    if (tileId == 56 && asset56Changed) {
+                        tileId = 57; // Change to pressed button texture
+                    }
+                    if (tileId == 29 && asset29Changed) {
+                        tileId = 1; // Change door to floor texture
+                        System.out.println("Rendering door at " + x + "," + y + " as floor (1)");
+                    }
+
                     // Skip invalid tile IDs and use floor texture (1.png) for missing textures
                     if (tileId < 0 || tileId >= tileTextures.length) {
                         tileId = 1; // Use floor texture for invalid tiles
@@ -252,6 +305,7 @@ public class GameMap implements Disposable {
 
     public void reset() {
         System.out.println("Resetting boxes...");
+        // Reset boxes to original positions
         for (Box box : boxes) {
             Room room = rooms.get(box.roomIndex);
             float worldY = (room.mapData.length - box.originalY - 1) * TILE_SIZE;
@@ -263,6 +317,94 @@ public class GameMap implements Disposable {
 
             box.bounds.x = newX;
             box.bounds.y = newY;
+        }
+
+        // Reset doors using stored original positions
+        for (Position doorPos : originalDoorPositions) {
+            Room room = rooms.get(doorPos.roomIndex);
+            // Change tile back to door
+            room.mapData[doorPos.y][doorPos.x] = 29;
+
+            // Add back collision box for the door
+            float worldY = (room.mapData.length - doorPos.y - 1) * TILE_SIZE;
+            float worldX = (doorPos.x + room.offsetX) * TILE_SIZE;
+            worldY += (room.offsetY * TILE_SIZE);
+            Rectangle doorBox = new Rectangle(worldX, worldY, TILE_SIZE, TILE_SIZE);
+
+            // Check if collision box already exists before adding
+            boolean boxExists = false;
+            for (Rectangle existingBox : room.collisionBoxes) {
+                if (existingBox.x == doorBox.x && existingBox.y == doorBox.y) {
+                    boxExists = true;
+                    break;
+                }
+            }
+            if (!boxExists) {
+                room.collisionBoxes.add(doorBox);
+            }
+
+            System.out.println("Restored door at position: " + doorPos.x + "," + doorPos.y + " in room " + doorPos.roomIndex);
+        }
+
+        // Reset asset state flags
+        asset56Changed = false;  // Reset button state
+        asset29Changed = false;  // Reset door state
+
+        System.out.println("Map Reset - All doors closed and buttons reset!");
+    }
+
+    public void handleAssetCollision(Rectangle playerBounds) {
+        for (Room room : rooms) {
+            for (int y = 0; y < room.mapData.length; y++) {
+                for (int x = 0; x < room.mapData[y].length; x++) {
+                    int tileId = room.mapData[y][x];
+                    float worldX = (x + room.offsetX) * TILE_SIZE;
+                    float worldY = (room.mapData.length - y - 1) * TILE_SIZE + (room.offsetY * TILE_SIZE);
+
+                    Rectangle tileBounds = new Rectangle(worldX, worldY, TILE_SIZE, TILE_SIZE);
+
+                    if (tileBounds.overlaps(playerBounds)) {
+                        if (tileId == 56) {
+                            asset56Changed = true;
+                            System.out.println("Button (56) pressed at position: " + x + "," + y);
+                            // When button is pressed, open the door
+                            openDoor();
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private void openDoor() {
+        // First collect all door positions
+        List<Position> doorPositions = new ArrayList<>();
+        for (int roomIndex = 0; roomIndex < rooms.size; roomIndex++) {
+            Room room = rooms.get(roomIndex);
+            for (int y = 0; y < room.getHeight(); y++) {
+                for (int x = 0; x < room.getWidth(); x++) {
+                    if (room.getTile(x, y) == 29) { // Door tile
+                        doorPositions.add(new Position(x, y, roomIndex));
+                    }
+                }
+            }
+        }
+
+        // Then modify the doors and update collision boxes
+        for (Position pos : doorPositions) {
+            Room room = rooms.get(pos.roomIndex);
+            room.setTile(pos.x, pos.y, 1); // Change to floor tile
+
+            // Remove the collision box for this door
+            float worldY = (room.mapData.length - pos.y - 1) * TILE_SIZE;
+            float worldX = (pos.x + room.offsetX) * TILE_SIZE;
+            worldY += (room.offsetY * TILE_SIZE);
+            Rectangle doorBox = new Rectangle(worldX, worldY, TILE_SIZE, TILE_SIZE);
+
+            // Remove any collision box that matches this position
+            room.collisionBoxes.removeValue(doorBox, false);
+
+            Gdx.app.log("GameMap", "Opening door at position: " + pos.x + "," + pos.y + " [" + pos.roomIndex + "s]");
         }
     }
 }

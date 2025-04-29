@@ -24,8 +24,8 @@ public class PlayerNormalState implements PlayerState {
         batch.draw(currentTexture,
             player.getPosition().x,
             player.getPosition().y,
-            32, // width
-            32  // height
+            24, // width
+            24  // height
         );
     }
 

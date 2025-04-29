@@ -28,7 +28,7 @@ public class Monkey {
     public Monkey(float x, float y) {
         position = new Vector2(x, y);
         velocity = new Vector2();
-        bounds = new Rectangle(x, y, 32, 32);
+        bounds = new Rectangle(x, y, 24, 24);
         texture = new Texture(com.badlogic.gdx.Gdx.files.internal("58.png")); // Default to monkey facing right
         isJumping = false;
         isFacingRight = true;

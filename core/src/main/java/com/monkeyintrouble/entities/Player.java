@@ -9,8 +9,12 @@ import com.badlogic.gdx.math.Vector2;
 import com.monkeyintrouble.map.GameMap;
 import com.monkeyintrouble.states.PlayerNormalState;
 import com.monkeyintrouble.states.PlayerState;
+import com.monkeyintrouble.observers.MonkeyObservable;
+import com.monkeyintrouble.observers.MonkeyObserver;
+import java.util.ArrayList;
+import java.util.List;
 
-public class Player {
+public class Player implements MonkeyObservable {
     private static final float MOVE_SPEED = 100f;
     private static final float GRAVITY = 0f;
     private static final float DAMAGE_COOLDOWN = 1.0f; // 1 second invincibility after taking damage
@@ -27,13 +31,14 @@ public class Player {
     private boolean isInvincible = false;
     private Texture texture;
     private boolean isJumping;
+    private final List<MonkeyObserver> observers = new ArrayList<>();
 
     public Player(GameMap gameMap, float startX, float startY) {
         this.gameMap = gameMap;
         this.position = new Vector2(startX, startY);
         this.startPosition = new Vector2(startX, startY);
         this.velocity = new Vector2(0, 0);
-        this.bounds = new Rectangle(startX, startY, 32, 32);
+        this.bounds = new Rectangle(startX, startY, 24, 24);
         this.isFacingRight = true;
         this.currentState = new PlayerNormalState();
         texture = new Texture(com.badlogic.gdx.Gdx.files.internal("58.png")); // Default to player facing right
@@ -116,12 +121,29 @@ public class Player {
         currentState.render(this, batch);
     }
 
+    @Override
+    public void addObserver(MonkeyObserver observer) {
+        observers.add(observer);
+    }
+
+    @Override
+    public void removeObserver(MonkeyObserver observer) {
+        observers.remove(observer);
+    }
+
+    private void notifyHealthChanged() {
+        for (MonkeyObserver observer : observers) {
+            observer.onHealthChanged(hearts);
+        }
+    }
+
     public void takeDamage() {
         if (!isInvincible) {
             hearts--;
             isInvincible = true;
             damageTimer = 0;
             System.out.println("Player took damage! Hearts remaining: " + hearts);
+            notifyHealthChanged();
 
             // Reset position when hit by saw
             position.set(startPosition);
@@ -184,6 +206,8 @@ public class Player {
         bounds.y = position.y;
         // Reset state
         setState(new PlayerNormalState());
+        // Notify observers of health reset
+        notifyHealthChanged();
     }
 
     public void resetState() {
