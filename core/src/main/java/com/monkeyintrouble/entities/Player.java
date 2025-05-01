@@ -83,9 +83,9 @@ public class Player implements MonkeyObservable {
                 }
             }
             if (deltaY != 0) {
-                bounds.y += deltaY;
+            bounds.y += deltaY;
                 if (gameMap.isColliding(bounds)) {
-                    bounds.y -= deltaY;
+                bounds.y -= deltaY;
                 }
             }
         }

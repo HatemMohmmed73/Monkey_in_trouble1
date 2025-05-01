@@ -134,6 +134,9 @@ public class GameMap implements Disposable {
             Room room = rooms.get(roomIndex);
             createCollisionBoxes(room, roomIndex);
         }
+
+        // Process map data to initialize box traps
+        processMapData();
     }
 
     private void createCollisionBoxes(Room room, int roomIndex) {
@@ -151,6 +154,11 @@ public class GameMap implements Disposable {
                 // Store original door positions
                 if (tileId == 29) {  // If it's a door tile
                     originalDoorPositions.add(new Position(x, y, roomIndex));
+                }
+
+                // Skip collision box for button (32.png)
+                if (tileId == 32) {
+                    continue;
                 }
 
                 if (type.isCollidable()) {
@@ -294,6 +302,29 @@ public class GameMap implements Disposable {
     public boolean isColliding(Rectangle bounds) {
         for (Room room : rooms) {
             for (Rectangle box : room.collisionBoxes) {
+                // Skip collision check for button (32.png)
+                int tileX = (int)(box.x / TILE_SIZE) - room.offsetX;
+                int tileY = room.mapData.length - 1 - (int)(box.y / TILE_SIZE) + room.offsetY;
+                if (tileX >= 0 && tileX < room.mapData[0].length &&
+                    tileY >= 0 && tileY < room.mapData.length) {
+                    int tileId = room.mapData[tileY][tileX];
+                    if (tileId == 32) { // Button
+                        continue;
+                    }
+                    // Check if this is a trap (31.png) and if it's triggered
+                    if (tileId == 31) {
+                        boolean isTriggered = false;
+                        for (BoxTrap trap : boxTraps) {
+                            if (trap.getTrapHitbox().overlaps(box) && trap.isTriggered()) {
+                                isTriggered = true;
+                                break;
+                            }
+                        }
+                        if (isTriggered) {
+                            continue; // Skip collision check for triggered trap
+                        }
+                    }
+                }
                 if (box.overlaps(bounds)) {
                     return true;
                 }
@@ -319,6 +350,7 @@ public class GameMap implements Disposable {
     }
 
     public boolean tryPushBox(Rectangle playerBounds, float deltaX, float deltaY) {
+        // First check regular boxes
         for (Box box : boxes) {
             if (box.bounds.overlaps(playerBounds)) {
                 // Check if the monkey is actually pushing the box
@@ -359,19 +391,46 @@ public class GameMap implements Disposable {
             }
         }
 
-        // Check for box trap boxes
+        // Then check box trap pushable boxes
         for (BoxTrap trap : boxTraps) {
-            if (trap.getBoxHitbox().overlaps(playerBounds)) {
-                float newBoxX = trap.getBoxHitbox().x + deltaX;
-                float newBoxY = trap.getBoxHitbox().y + deltaY;
+            if (trap.getPushableBoxHitbox().overlaps(playerBounds)) {
+                System.out.println("Player overlapping with pushable box");
 
-                // Check if the new position is valid (not colliding with walls)
-                Rectangle newBoxBounds = new Rectangle(newBoxX, newBoxY, TILE_SIZE, TILE_SIZE);
-                if (!isColliding(newBoxBounds)) {
-                    // Move the box
-                    trap.getBoxHitbox().x = newBoxX;
-                    trap.getBoxHitbox().y = newBoxY;
-                    return true;
+                // Check if the monkey is actually pushing the box
+                boolean isPushing = false;
+                Rectangle boxHitbox = trap.getPushableBoxHitbox();
+
+                // Moving right: monkey must be on the left side of the box
+                if (deltaX > 0 && playerBounds.x + playerBounds.width <= boxHitbox.x + 2) {
+                    isPushing = true;
+                }
+                // Moving left: monkey must be on the right side of the box
+                else if (deltaX < 0 && playerBounds.x >= boxHitbox.x + boxHitbox.width - 2) {
+                    isPushing = true;
+                }
+                // Moving up: monkey must be below the box
+                else if (deltaY > 0 && playerBounds.y + playerBounds.height <= boxHitbox.y + 2) {
+                    isPushing = true;
+                }
+                // Moving down: monkey must be above the box
+                else if (deltaY < 0 && playerBounds.y >= boxHitbox.y + boxHitbox.height - 2) {
+                    isPushing = true;
+                }
+
+                if (isPushing) {
+                    float newBoxX = boxHitbox.x + deltaX;
+                    float newBoxY = boxHitbox.y + deltaY;
+
+                    // Check if the new position is valid (not colliding with walls)
+                    Rectangle newBoxBounds = new Rectangle(newBoxX, newBoxY, TILE_SIZE, TILE_SIZE);
+                    if (!isColliding(newBoxBounds)) {
+                        System.out.println("Moving pushable box to: (" + newBoxX + ", " + newBoxY + ")");
+                        // Move the pushable box
+                        trap.movePushableBox(deltaX, deltaY);
+                        return true;
+                    } else {
+                        System.out.println("Cannot move box - collision detected");
+                    }
                 }
             }
         }
@@ -482,6 +541,42 @@ public class GameMap implements Disposable {
         System.out.println("Map Reset - All doors closed and buttons reset!");
     }
 
+    private Vector2 findTeleportTo69Destination() {
+        // Search all rooms for asset 69
+        for (Room room : rooms) {
+            for (int y = 0; y < room.mapData.length; y++) {
+                for (int x = 0; x < room.mapData[y].length; x++) {
+                    if (room.mapData[y][x] == 69) {
+                        // Found asset 69, return position one block upward
+                        float worldX = (x + room.offsetX) * TILE_SIZE;
+                        // Add TILE_SIZE to move one block upward
+                        float worldY = (room.mapData.length - y - 1) * TILE_SIZE + (room.offsetY * TILE_SIZE) + TILE_SIZE;
+                        System.out.println("Teleporting to one block above asset 69 at: " + worldX + "," + worldY);
+                        return new Vector2(worldX, worldY);
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    private Vector2 findTeleportTo51Destination() {
+        // Search all rooms for asset 51
+        for (Room room : rooms) {
+            for (int y = 0; y < room.mapData.length; y++) {
+                for (int x = 0; x < room.mapData[y].length; x++) {
+                    if (room.mapData[y][x] == 51) {
+                        // Found asset 51, return position with a small offset to prevent immediate re-teleport
+                        float worldX = (x + room.offsetX) * TILE_SIZE + 2;
+                        float worldY = (room.mapData.length - y - 1) * TILE_SIZE + (room.offsetY * TILE_SIZE);
+                        return new Vector2(worldX, worldY);
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
     public Vector2 handleAssetCollision(Rectangle playerBounds) {
         // Skip if we're currently teleporting or on cooldown
         if (isCurrentlyTeleporting || teleportCooldown > 0) {
@@ -536,6 +631,28 @@ public class GameMap implements Disposable {
                             // Change monkey to ghost state when colliding with asset 63
                             if (player != null) {
                                 player.setGhostMode(true);
+                            }
+                        } else if (tileId == 52 && !isCurrentlyTeleporting) {
+                            // Teleport to asset 69
+                            Vector2 destination = findTeleportTo69Destination();
+                            if (destination != null) {
+                                isCurrentlyTeleporting = true;
+                                teleportCooldown = TELEPORT_COOLDOWN_DURATION;
+                                System.out.println("Found teleport destination (69): " + destination.x + "," + destination.y);
+                                return destination;
+                            } else {
+                                System.out.println("Error: Could not find teleport destination (tile 69)!");
+                            }
+                        } else if (tileId == 69 && !isCurrentlyTeleporting) {
+                            // Teleport to asset 51
+                            Vector2 destination = findTeleportTo51Destination();
+                            if (destination != null) {
+                                isCurrentlyTeleporting = true;
+                                teleportCooldown = TELEPORT_COOLDOWN_DURATION;
+                                System.out.println("Found teleport destination (51): " + destination.x + "," + destination.y);
+                                return destination;
+                            } else {
+                                System.out.println("Error: Could not find teleport destination (tile 51)!");
                             }
                         } else if (tileId == 34 && !isCurrentlyTeleporting) {
                             // Teleport to right top room
@@ -690,31 +807,53 @@ public class GameMap implements Disposable {
 
                     // Look for box trap components
                     if (tileId == 31) { // Trap
-                        // Find the box (39) and button (32) positions
+                        System.out.println("Found trap at: (" + x + ", " + y + ")");
+                        // Find the box (39), button (32), and pushable box (42) positions
                         float boxX = -1, boxY = -1;
                         float buttonX = -1, buttonY = -1;
+                        float pushableBoxX = -1, pushableBoxY = -1;
 
-                        // Search in a 3x3 area around the trap
-                        for (int dy = -1; dy <= 1; dy++) {
-                            for (int dx = -1; dx <= 1; dx++) {
-                                int checkX = x + dx;
-                                int checkY = y + dy;
-                                if (checkX >= 0 && checkX < room.mapData[y].length &&
-                                    checkY >= 0 && checkY < room.mapData.length) {
-                                    int checkTile = room.mapData[checkY][checkX];
-                                    if (checkTile == 39) { // Box
-                                        boxX = checkX * TILE_SIZE + (room.offsetX * TILE_SIZE);
-                                        boxY = (room.mapData.length - checkY - 1) * TILE_SIZE + (room.offsetY * TILE_SIZE);
-                                    } else if (checkTile == 32) { // Button
-                                        buttonX = checkX * TILE_SIZE + (room.offsetX * TILE_SIZE);
-                                        buttonY = (room.mapData.length - checkY - 1) * TILE_SIZE + (room.offsetY * TILE_SIZE);
-                                    }
+                        // Search the entire room for components
+                        for (int searchY = 0; searchY < room.mapData.length; searchY++) {
+                            for (int searchX = 0; searchX < room.mapData[searchY].length; searchX++) {
+                                int checkTile = room.mapData[searchY][searchX];
+                                float componentWorldX = (searchX + room.offsetX) * TILE_SIZE;
+                                float componentWorldY = (room.mapData.length - searchY - 1) * TILE_SIZE + (room.offsetY * TILE_SIZE);
+
+                                if (checkTile == 39) { // Box
+                                    boxX = componentWorldX;
+                                    boxY = componentWorldY;
+                                    System.out.println("Found box at: (" + searchX + ", " + searchY + ")");
+                                } else if (checkTile == 32) { // Button
+                                    buttonX = componentWorldX;
+                                    buttonY = componentWorldY;
+                                    System.out.println("Found button at: (" + searchX + ", " + searchY + ")");
+                                } else if (checkTile == 42) { // Pushable box
+                                    pushableBoxX = componentWorldX;
+                                    pushableBoxY = componentWorldY;
+                                    System.out.println("Found pushable box at: (" + searchX + ", " + searchY + ")");
                                 }
                             }
                         }
 
-                        if (boxX != -1 && buttonX != -1) {
-                            boxTraps.add(new BoxTrap(worldX, worldY, boxX, boxY, buttonX, buttonY));
+                        if (boxX != -1 && buttonX != -1 && pushableBoxX != -1) {
+                            System.out.println("Creating box trap with components:");
+                            System.out.println("Trap at: (" + worldX + ", " + worldY + ")");
+                            System.out.println("Box at: (" + boxX + ", " + boxY + ")");
+                            System.out.println("Button at: (" + buttonX + ", " + buttonY + ")");
+                            System.out.println("Pushable box at: (" + pushableBoxX + ", " + pushableBoxY + ")");
+                            boxTraps.add(new BoxTrap(
+                                worldX,
+                                worldY,
+                                boxX,
+                                boxY,
+                                buttonX,
+                                buttonY,
+                                pushableBoxX,
+                                pushableBoxY
+                            ));
+                        } else {
+                            System.out.println("Could not find all components for box trap at: (" + x + ", " + y + ")");
                         }
                     }
                 }

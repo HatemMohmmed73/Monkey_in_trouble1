@@ -11,7 +11,7 @@ public class Banana {
 
     public Banana(float x, float y) {
         bounds = new Rectangle(x, y, 16, 16);
-        texture = new Texture("banana.png"); // You'll need to add this texture
+        texture = new Texture("banana1.png"); // You'll need to add this texture
         collected = false;
     }
 

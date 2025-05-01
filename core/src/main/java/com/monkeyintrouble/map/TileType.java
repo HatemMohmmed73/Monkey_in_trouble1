@@ -65,15 +65,14 @@ public enum TileType {
     }
 
     public boolean isCollidable() {
-        return this != TRAP && (
-            this == WALL_STONE || this == WALL_TOP || this == WALL_SIDE ||
+        return this == WALL_STONE || this == WALL_TOP || this == WALL_SIDE ||
             this == WALL_CORNER || this == WALL_LEFT || this == WALL_RIGHT ||
             this == WALL_BOTTOM_LEFT || this == WALL_BOTTOM || this == WALL_18 ||
             this == WALL_BOTTOM_RIGHT || this == WALL_CORNER_SPECIAL || this == WALL_TRANSITION ||
             this == WALL_SPECIAL || this == WALL_DAMAGED || this == WALL_PILLAR ||
             this == WALL_WINDOW || this == SPIKES || this == WALL_SPECIAL_2 ||
-            this == WALL_DARK || this == WALL_CHAINS || this == BARS || this == WALL_22
-        );
+            this == WALL_DARK || this == WALL_CHAINS || this == BARS || this == WALL_22 ||
+            this == TRAP;
     }
 
     public boolean isPushable() {

@@ -26,26 +26,42 @@ public class BoxTrap {
     private final Rectangle trapHitbox;
     private final Rectangle boxHitbox;
     private final Rectangle buttonHitbox;
+    private final Rectangle pushableBoxHitbox;
+    private float pushableBoxX;
+    private float pushableBoxY;
 
-    public BoxTrap(float trapX, float trapY, float boxX, float boxY, float buttonX, float buttonY) {
+    public BoxTrap(float trapX, float trapY, float boxX, float boxY, float buttonX, float buttonY, float pushableBoxX, float pushableBoxY) {
         this.trapX = trapX;
         this.trapY = trapY;
         this.boxX = boxX;
         this.boxY = boxY;
         this.buttonX = buttonX;
         this.buttonY = buttonY;
+        this.pushableBoxX = pushableBoxX;
+        this.pushableBoxY = pushableBoxY;
         this.isTriggered = false;
 
         // Create hitboxes
         this.trapHitbox = new Rectangle(trapX, trapY, TILE_SIZE, TILE_SIZE);
         this.boxHitbox = new Rectangle(boxX, boxY, TILE_SIZE, TILE_SIZE);
         this.buttonHitbox = new Rectangle(buttonX, buttonY, TILE_SIZE, TILE_SIZE);
+        this.pushableBoxHitbox = new Rectangle(pushableBoxX, pushableBoxY, TILE_SIZE, TILE_SIZE);
     }
 
     public void update(float deltaTime) {
-        // Check if box is on button
-        if (!isTriggered && boxHitbox.overlaps(buttonHitbox)) {
-            isTriggered = true;
+        // Check if pushable box is on button
+        if (!isTriggered) {
+            boolean isOverlapping = pushableBoxHitbox.overlaps(buttonHitbox);
+            System.out.println("Box hitbox: x=" + pushableBoxHitbox.x + ", y=" + pushableBoxHitbox.y +
+                             ", w=" + pushableBoxHitbox.width + ", h=" + pushableBoxHitbox.height);
+            System.out.println("Button hitbox: x=" + buttonHitbox.x + ", y=" + buttonHitbox.y +
+                             ", w=" + buttonHitbox.width + ", h=" + buttonHitbox.height);
+            System.out.println("Box and button overlapping: " + isOverlapping);
+
+            if (isOverlapping) {
+                isTriggered = true;
+                System.out.println("Box trap triggered! Changing trap to inactive state (30.png) and box to pressed state (41.png)");
+            }
         }
     }
 
@@ -60,6 +76,9 @@ public class BoxTrap {
 
         // Draw button
         batch.draw(tileTextures[BUTTON], buttonX, buttonY, TILE_SIZE, TILE_SIZE);
+
+        // Draw pushable box
+        batch.draw(tileTextures[PUSHABLE_BOX], pushableBoxX, pushableBoxY, TILE_SIZE, TILE_SIZE);
     }
 
     public Rectangle getTrapHitbox() {
@@ -70,13 +89,35 @@ public class BoxTrap {
         return boxHitbox;
     }
 
+    public Rectangle getPushableBoxHitbox() {
+        return pushableBoxHitbox;
+    }
+
+    public void movePushableBox(float deltaX, float deltaY) {
+        // Update both the box position and hitbox position
+        pushableBoxX += deltaX;
+        pushableBoxY += deltaY;
+        pushableBoxHitbox.x = pushableBoxX;
+        pushableBoxHitbox.y = pushableBoxY;
+
+        // Print debug information
+        System.out.println("Box moved to: (" + pushableBoxX + ", " + pushableBoxY + ")");
+        System.out.println("Box hitbox: x=" + pushableBoxHitbox.x + ", y=" + pushableBoxHitbox.y +
+                         ", w=" + pushableBoxHitbox.width + ", h=" + pushableBoxHitbox.height);
+        System.out.println("Button hitbox: x=" + buttonHitbox.x + ", y=" + buttonHitbox.y +
+                         ", w=" + buttonHitbox.width + ", h=" + buttonHitbox.height);
+        System.out.println("Box and button overlapping: " + pushableBoxHitbox.overlaps(buttonHitbox));
+    }
+
     public boolean isTriggered() {
         return isTriggered;
     }
 
     public void reset() {
         isTriggered = false;
-        boxHitbox.x = boxX;
-        boxHitbox.y = boxY;
+        pushableBoxX = boxX;
+        pushableBoxY = boxY;
+        pushableBoxHitbox.x = pushableBoxX;
+        pushableBoxHitbox.y = pushableBoxY;
     }
 }

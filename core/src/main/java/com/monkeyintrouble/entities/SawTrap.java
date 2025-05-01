@@ -16,8 +16,8 @@ public class SawTrap implements Disposable {
     private static final int TRAP_MIDDLE = 44;
     private static final int TRAP_RIGHT = 45;
     private static final int SAW_LEFT = 47;
-    private static final int SAW_MIDDLE = 48;
-    private static final int SAW_RIGHT = 49;
+    //private static final int SAW_MIDDLE = 48;
+    //private static final int SAW_RIGHT = 49;
 
     private final float startX;
     private final float y;
