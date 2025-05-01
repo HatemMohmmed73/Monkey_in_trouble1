@@ -7,7 +7,7 @@ import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.ui.Table;
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
-import com.badlogic.gdx.scenes.scene2d.ui.Skin;
+import com.badlogic.gdx.scenes.scene2d.ui.Label;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
@@ -15,9 +15,9 @@ import com.monkeyintrouble.observers.MonkeyObserver;
 import com.monkeyintrouble.entities.Player;
 import com.badlogic.gdx.graphics.g2d.GlyphLayout;
 import com.monkeyintrouble.screens.GameScreen;
+import com.badlogic.gdx.utils.viewport.ScreenViewport;
 
 public class GameUI implements MonkeyObserver {
-
     private static final int MAX_HEARTS = 3;
     private static final int HEART_SIZE = 32;
     private static final int HEART_SPACING = 40;
@@ -26,83 +26,33 @@ public class GameUI implements MonkeyObserver {
     private int hearts = MAX_HEARTS;
     private int bananaCount = 0;
     private BitmapFont font;
-    private Stage stage;
-    private Skin skin;
-    private TextButton startButton;
-    private TextButton restartButton;
-    private Player player;
-    private Texture fullHeartTexture;  // heart1.png
-    private Texture emptyHeartTexture; // heart2.png
-    private Texture bananaTexture;     // banana1.png
-    private Texture emptyBananaTexture; // banana2.png
+    private final Stage stage;
+    private final GameScreen gameScreen;
     private boolean isGameOver = false;
-    private final GameScreen gameScreen;  // Add reference to GameScreen
+    private Texture fullHeartTexture;
+    private Texture emptyHeartTexture;
+    private Texture bananaTexture;
+    private Texture emptyBananaTexture;
 
-    public GameUI(Player player, GameScreen gameScreen) {  // Modified constructor
-        this.player = player;
-        this.gameScreen = gameScreen;  // Store reference to GameScreen
+    public GameUI(GameScreen gameScreen) {
+        this.gameScreen = gameScreen;
+        this.stage = new Stage(new ScreenViewport());
+        Gdx.input.setInputProcessor(stage);
+
+        // Initialize font
         font = new BitmapFont();
         font.setColor(Color.WHITE);
         font.getData().setScale(2);
 
-        // Load heart textures
-        fullHeartTexture = new Texture("heart1.png");
-        emptyHeartTexture = new Texture("heart2.png");
-
-        // Load banana textures
-        bananaTexture = new Texture("banana1.png");
-        emptyBananaTexture = new Texture("banana2.png");
-
-        // Initialize stage and skin
-        stage = new Stage();
-        skin = new Skin(Gdx.files.internal("ui/uiskin.json"));
-        Gdx.input.setInputProcessor(stage);
-
-        // Create buttons
-        startButton = new TextButton("Start", skin);
-        restartButton = new TextButton("Restart", skin);
-
-        // Position buttons in top left
-        Table buttonTable = new Table();
-        buttonTable.setPosition(10, Gdx.graphics.getHeight() - 10);
-        buttonTable.top().left();
-        buttonTable.add(startButton).pad(5);
-        buttonTable.row();
-        buttonTable.add(restartButton).pad(5);
-
-        // Add button listeners
-        startButton.addListener(new ClickListener() {
-            @Override
-            public void clicked(InputEvent event, float x, float y) {
-                startGame();
-            }
-        });
-
-        restartButton.addListener(new ClickListener() {
-            @Override
-            public void clicked(InputEvent event, float x, float y) {
-                restartGame();
-            }
-        });
-
-        stage.addActor(buttonTable);
-    }
-
-    private void startGame() {
-        System.out.println("Game Started!");
-        isGameOver = false;
-    }
-
-    private void restartGame() {
-        if (gameScreen != null) {
-            gameScreen.reset();  // This will reset everything: player, map, ghost, and game state
-            isGameOver = false;
-            System.out.println("Game Fully Restarted - All elements restored to original state!");
-        }
+        // Load textures
+        fullHeartTexture = new Texture(Gdx.files.internal("heart1.png"));
+        emptyHeartTexture = new Texture(Gdx.files.internal("heart2.png"));
+        bananaTexture = new Texture(Gdx.files.internal("banana1.png"));
+        emptyBananaTexture = new Texture(Gdx.files.internal("banana2.png"));
     }
 
     @Override
-    public void onHealthChanged(int hearts) {
+    public void onHeartsChanged(int hearts) {
         this.hearts = hearts;
         System.out.println("Health: " + hearts);
         if (hearts <= 0) {
@@ -111,28 +61,19 @@ public class GameUI implements MonkeyObserver {
     }
 
     @Override
-    public void onBananaCollected(int totalBananas) {
-        this.bananaCount = totalBananas;
+    public void onBananasChanged(int bananas) {
+        this.bananaCount = bananas;
         System.out.println("Bananas: " + bananaCount);
     }
 
     @Override
     public void onGhostModeChanged(boolean isGhostMode) {
-        System.out.println("Player ghost mode changed to: " + isGhostMode);
+        System.out.println("Ghost mode: " + isGhostMode);
     }
 
     public void render(SpriteBatch batch) {
-        stage.act();
+        stage.act(Gdx.graphics.getDeltaTime());
         stage.draw();
-
-        if (isGameOver) {
-            // Draw "GAME OVER" text in the center of the screen
-            GlyphLayout layout = new GlyphLayout(font, "GAME OVER");
-            float x = (Gdx.graphics.getWidth() - layout.width) / 2;
-            float y = (Gdx.graphics.getHeight() + layout.height) / 2;
-            font.draw(batch, "GAME OVER", x, y);
-            return;
-        }
 
         // Draw hearts
         for (int i = 0; i < MAX_HEARTS; i++) {
@@ -146,12 +87,19 @@ public class GameUI implements MonkeyObserver {
             batch.draw(bananaTex, Gdx.graphics.getWidth() - (5 - i) * BANANA_SPACING - 10,
                       Gdx.graphics.getHeight() - BANANA_SIZE - 10, BANANA_SIZE, BANANA_SIZE);
         }
+
+        // Draw game over text if needed
+        if (isGameOver) {
+            GlyphLayout layout = new GlyphLayout(font, "GAME OVER");
+            float x = (Gdx.graphics.getWidth() - layout.width) / 2;
+            float y = (Gdx.graphics.getHeight() + layout.height) / 2;
+            font.draw(batch, "GAME OVER", x, y);
+        }
     }
 
     public void dispose() {
         font.dispose();
         stage.dispose();
-        skin.dispose();
         fullHeartTexture.dispose();
         emptyHeartTexture.dispose();
         bananaTexture.dispose();
@@ -160,5 +108,9 @@ public class GameUI implements MonkeyObserver {
 
     public void resize(int width, int height) {
         stage.getViewport().update(width, height, true);
+    }
+
+    public Stage getStage() {
+        return stage;
     }
 }

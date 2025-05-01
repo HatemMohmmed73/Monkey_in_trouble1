@@ -1,23 +1,38 @@
 package com.monkeyintrouble.states;
 
-import com.monkeyintrouble.entities.Monkey;
+import com.monkeyintrouble.entities.Player;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.graphics.Texture;
 
 public class GhostState implements MonkeyState {
 
     @Override
-    public void update(Monkey monkey, float delta) {
-        monkey.basicUpdate(delta);
-        // Add logic: now can fight ghosts
+    public void update(Player player, float delta) {
+        // In ghost state, the player can pass through certain obstacles
+        // and interact with ghosts
     }
 
     @Override
-    public void render(Monkey monkey, SpriteBatch batch) {
-        monkey.drawMonkey(batch, true); // true: ghost
+    public void render(Player player, SpriteBatch batch) {
+        // Use ghost textures based on facing direction
+        Texture currentTexture = player.isFacingRight() ?
+            player.getGhostRightTexture() : player.getGhostLeftTexture();
+
+        batch.draw(currentTexture,
+            player.getPosition().x,
+            player.getPosition().y,
+            24, // width
+            24  // height
+        );
     }
 
     @Override
-    public void onEnter(Monkey monkey) {
-        System.out.println("Monkey entered Ghost State");
+    public void onEnter(Player player) {
+        System.out.println("Player entered Ghost State");
+    }
+
+    @Override
+    public void onExit(Player player) {
+        System.out.println("Player exited Ghost State");
     }
 }

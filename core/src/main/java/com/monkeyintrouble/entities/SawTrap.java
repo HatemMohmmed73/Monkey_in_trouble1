@@ -3,6 +3,7 @@ package com.monkeyintrouble.entities;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.math.Rectangle;
+import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.Disposable;
 
 public class SawTrap implements Disposable {
@@ -25,6 +26,9 @@ public class SawTrap implements Disposable {
     private boolean movingLeft;
     private float stateTime;
     private final Rectangle hitbox;
+    private Texture texture;
+    private float rotation;
+    private Vector2 startPosition;
 
     public SawTrap(float x, float y) {
         this.startX = x;
@@ -34,6 +38,9 @@ public class SawTrap implements Disposable {
         this.movingLeft = false;
         this.stateTime = 0;
         this.hitbox = new Rectangle(x, y, TILE_SIZE, TILE_SIZE);
+        this.texture = new Texture(com.badlogic.gdx.Gdx.files.internal("43.png"));
+        this.rotation = 0;
+        this.startPosition = new Vector2(x, y);
     }
 
     public void update(float deltaTime) {
@@ -86,6 +93,16 @@ public class SawTrap implements Disposable {
 
     public float getY() {
         return y;
+    }
+
+    public void reset() {
+        this.currentX = startX;
+        this.currentPosition = 0;
+        this.movingLeft = false;
+        this.stateTime = 0;
+        this.rotation = 0;
+        this.hitbox.x = startX;
+        this.hitbox.y = y;
     }
 
     @Override

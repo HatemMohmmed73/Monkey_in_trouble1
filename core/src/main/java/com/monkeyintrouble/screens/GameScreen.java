@@ -8,7 +8,6 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.math.Vector2;
 import com.monkeyintrouble.MonkeyInTroubleGame;
 import com.monkeyintrouble.entities.Player;
-import com.monkeyintrouble.entities.Ghost;
 import com.monkeyintrouble.map.GameMap;
 import com.monkeyintrouble.map.MapLoader;
 import com.monkeyintrouble.ui.GameUI;
@@ -23,135 +22,91 @@ public class GameScreen implements Screen {
     private final GameMap gameMap;
     private final Player player;
     private final GameUI ui;
-    private Ghost ghost;
-    private boolean gameOver = false;
-    private ShapeRenderer shapeRenderer;
+    private final ShapeRenderer shapeRenderer;
+    private final float startX = 142;
+    private final float startY = 62;
 
     public GameScreen(MonkeyInTroubleGame game) {
         this.game = game;
         this.batch = new SpriteBatch();
-
-        // Create camera with fixed viewport size
-        float viewportWidth = 800;
-        float viewportHeight = 480;
-        this.camera = new OrthographicCamera(viewportWidth, viewportHeight);
+        this.camera = new OrthographicCamera(800, 480);
+        this.camera.position.set(400, 240, 0);
+        this.camera.update();
 
         // Load map
         this.gameMap = MapLoader.loadLevel1();
 
         // Create player at the starting position in the main room
-        float startX = 100; // Position in the first room
-        float startY = 300 - (9 * 32) + 32; // Start 9 blocks lower (32 pixels per block) and then 1 block up
         this.player = new Player(gameMap, startX, startY);
         this.gameMap.setPlayer(player);  // Set player reference in GameMap
-        this.ui = new GameUI(player, this);
+        this.ui = new GameUI(this);
         // Register UI as observer for player
         this.player.addObserver(this.ui);
 
-        // Create ghost at the original position where red square was
-        this.ghost = new Ghost(128, 200);
-
-        // Center camera on player
-        centerCameraOnPlayer();
-
-        shapeRenderer = new ShapeRenderer();
-    }
-
-    private void centerCameraOnPlayer() {
-        Vector2 position = player.getPosition();
-        camera.position.x = position.x;
-        camera.position.y = position.y;
-        camera.update();
+        // Initialize shape renderer for debug
+        this.shapeRenderer = new ShapeRenderer();
     }
 
     @Override
     public void render(float delta) {
-        if (gameOver) {
-            // Show game over screen
-            Gdx.gl.glClearColor(0, 0, 0, 1);
-            Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
-            batch.begin();
-            ui.render(batch);
-            batch.end();
-            return;
-        }
-
-        // Clear screen
-        Gdx.gl.glClearColor(0, 0, 0.2f, 1);
-        Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
-
-        // Update game objects
+        // Update game state
         player.update(delta);
-        ghost.update(delta);
         gameMap.update(delta);
 
-        // Handle collisions
-        handleCollisions();
+        // Clear screen
+        Gdx.gl.glClearColor(0, 0, 0, 1);
+        Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
 
-        // Center camera on player
-        centerCameraOnPlayer();
-
-        // Update camera
+        // Update camera position to follow player
+        camera.position.x = player.getPosition().x;
+        camera.position.y = player.getPosition().y;
         camera.update();
+
+        // Set up sprite batch with camera
         batch.setProjectionMatrix(camera.combined);
 
-        // Draw everything
+        // Render game elements
         batch.begin();
         gameMap.render(batch);
         player.render(batch);
-        ghost.render(batch);
+        batch.end();
+
+        // Render UI (not affected by camera)
+        batch.setProjectionMatrix(ui.getStage().getCamera().combined);
+        batch.begin();
         ui.render(batch);
         batch.end();
 
-        // Draw debug shapes
-        shapeRenderer.setProjectionMatrix(camera.combined);
-        shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
-        shapeRenderer.setColor(Color.RED);
-        shapeRenderer.rect(ghost.getBounds().x, ghost.getBounds().y, ghost.getBounds().width, ghost.getBounds().height);
-        shapeRenderer.end();
-    }
-
-    private void handleCollisions() {
-        // Handle ghost collision
-        if (player.getBounds().overlaps(ghost.getBounds())) {
-            System.out.println("Ghost collision detected! Player position: " + player.getPosition() + ", Ghost position: (" + ghost.getBounds().x + "," + ghost.getBounds().y + ")");
-            player.takeDamage();
-            if (player.getHearts() <= 0) {
-                gameOver = true;
-                // Wait for 2 seconds then reset
-                Timer.schedule(new Timer.Task() {
-                    @Override
-                    public void run() {
-                        reset();
-                    }
-                }, 2); // 2 seconds delay
-            }
+        // Debug rendering (optional)
+        if (MonkeyInTroubleGame.DEBUG) {
+            shapeRenderer.setProjectionMatrix(camera.combined);
+            shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
+            shapeRenderer.setColor(1, 0, 0, 1);
+            shapeRenderer.rect(player.getBounds().x, player.getBounds().y, player.getBounds().width, player.getBounds().height);
+            shapeRenderer.end();
         }
-
-        // Handle asset collisions and get teleport destination if any
-        Vector2 teleportDestination = gameMap.handleAssetCollision(player.getBounds());
-        if (teleportDestination != null) {
-            // Use the new teleport method
-            player.teleport(teleportDestination.x, teleportDestination.y);
-        }
-
-        // Handle saw trap collision is handled in Player class
     }
 
     @Override
     public void resize(int width, int height) {
-        camera.setToOrtho(false, width, height);
+        // Keep viewport size fixed at 800x480
+        camera.viewportWidth = 800;
+        camera.viewportHeight = 480;
+        camera.position.set(400, 240, 0);
+        camera.update();
+
+        // Update UI viewport
         ui.resize(width, height);
     }
 
     @Override
     public void show() {
-        // Screen is shown
+        Gdx.input.setInputProcessor(ui.getStage());
     }
 
     @Override
     public void hide() {
-        // Screen is hidden
+        Gdx.input.setInputProcessor(null);
     }
 
     @Override
@@ -169,7 +124,7 @@ public class GameScreen implements Screen {
         batch.dispose();
         gameMap.dispose();
         player.dispose();
-        ghost.dispose();
+        ui.dispose();
         shapeRenderer.dispose();
     }
 
@@ -179,12 +134,6 @@ public class GameScreen implements Screen {
 
         // Reset map (which resets doors, buttons, etc)
         gameMap.reset();
-
-        // Reset ghost position
-        ghost.reset();
-
-        // Reset game state
-        gameOver = false;
 
         System.out.println("Game Reset - All elements restored to original state!");
     }

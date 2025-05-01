@@ -7,115 +7,110 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
 import com.monkeyintrouble.map.GameMap;
-import com.monkeyintrouble.states.PlayerNormalState;
-import com.monkeyintrouble.states.PlayerState;
+import com.monkeyintrouble.states.MonkeyState;
+import com.monkeyintrouble.states.NormalState;
+import com.monkeyintrouble.states.GhostState;
 import com.monkeyintrouble.observers.MonkeyObservable;
 import com.monkeyintrouble.observers.MonkeyObserver;
 import java.util.ArrayList;
 import java.util.List;
 
 public class Player implements MonkeyObservable {
-    private static final float MOVE_SPEED = 100f;
+    private static final float MOVE_SPEED = 150f;
     private static final float GRAVITY = 0f;
-    private static final float DAMAGE_COOLDOWN = 1.0f; // 1 second invincibility after taking damage
+    private static final float DAMAGE_COOLDOWN = 1.0f;
 
+    private final float startX;
+    private final float startY;
     private final Vector2 position;
-    private final Vector2 velocity;
     private final Rectangle bounds;
     private final GameMap gameMap;
-    private final Vector2 startPosition;
-    private PlayerState currentState;
-    private boolean isFacingRight;
-    private int hearts = 3; // Start with 3 hearts
-    private float damageTimer = 0; // Timer for damage cooldown
+    private final Texture rightTexture;
+    private final Texture leftTexture;
+    private final Texture ghostRightTexture;
+    private final Texture ghostLeftTexture;
+    private boolean isFacingRight = true;
+    private float jumpVelocity = 0;
+    private boolean isJumping = false;
+    private int hearts = 3;
+    private int bananas = 0;
+    private float damageTimer = 0;
     private boolean isInvincible = false;
-    private Texture texture;
-    private boolean isJumping;
-    private final List<MonkeyObserver> observers = new ArrayList<>();
-    private boolean isGhostMode = false; // New ghost mode state
-    private Texture ghostRightTexture; // New ghost textures
-    private Texture ghostLeftTexture;
+    private boolean isGhostMode = false;
+    private MonkeyState currentState;
+    private MonkeyObserver observer;
 
-    public Player(GameMap gameMap, float startX, float startY) {
+    public Player(GameMap gameMap, float x, float y) {
         this.gameMap = gameMap;
-        this.position = new Vector2(startX, startY);
-        this.startPosition = new Vector2(startX, startY);
-        this.velocity = new Vector2(0, 0);
-        this.bounds = new Rectangle(startX, startY, 24, 24);
-        this.isFacingRight = true;
-        this.currentState = new PlayerNormalState();
-        texture = new Texture(com.badlogic.gdx.Gdx.files.internal("58.png")); // Default to player facing right
-        ghostRightTexture = new Texture(com.badlogic.gdx.Gdx.files.internal("60.png")); // Ghost right texture
-        ghostLeftTexture = new Texture(com.badlogic.gdx.Gdx.files.internal("61.png")); // Ghost left texture
-        isJumping = false;
+        this.position = new Vector2(x, y);
+        this.bounds = new Rectangle(x, y, 24, 24);
+        this.rightTexture = new Texture(com.badlogic.gdx.Gdx.files.internal("58.png")); // Monkey right texture
+        this.leftTexture = new Texture(com.badlogic.gdx.Gdx.files.internal("59.png")); // Monkey left texture
+        this.ghostRightTexture = new Texture(com.badlogic.gdx.Gdx.files.internal("60.png")); // Ghost right texture
+        this.ghostLeftTexture = new Texture(com.badlogic.gdx.Gdx.files.internal("61.png")); // Ghost left texture
+        this.currentState = new NormalState();
+        this.startX = x;
+        this.startY = y;
     }
 
     public void update(float deltaTime) {
-        // Update damage cooldown
-        if (isInvincible) {
-            damageTimer += deltaTime;
-            if (damageTimer >= DAMAGE_COOLDOWN) {
-                isInvincible = false;
-                damageTimer = 0;
-            }
-        }
-
         // Handle horizontal movement
-        float moveX = 0;
-        float moveY = 0;
+        float deltaX = 0;
+        float deltaY = 0;
 
-        if (Gdx.input.isKeyPressed(Keys.LEFT)) {
-            moveX -= 1;
-            isFacingRight = false;
-        }
         if (Gdx.input.isKeyPressed(Keys.RIGHT)) {
-            moveX += 1;
+            deltaX += MOVE_SPEED * deltaTime;
             isFacingRight = true;
         }
+        if (Gdx.input.isKeyPressed(Keys.LEFT)) {
+            deltaX -= MOVE_SPEED * deltaTime;
+            isFacingRight = false;
+        }
         if (Gdx.input.isKeyPressed(Keys.UP)) {
-            moveY += 1;
+            deltaY += MOVE_SPEED * deltaTime;
         }
         if (Gdx.input.isKeyPressed(Keys.DOWN)) {
-            moveY -= 1;
+            deltaY -= MOVE_SPEED * deltaTime;
         }
 
-        // Apply movement
-        velocity.x = moveX * MOVE_SPEED;
-        velocity.y = moveY * MOVE_SPEED;
-
-        // Calculate movement for this frame
-        float deltaX = velocity.x * deltaTime;
-        float deltaY = velocity.y * deltaTime;
-
-        // Try to push boxes first
-        if (gameMap.tryPushBox(bounds, deltaX, deltaY)) {
-            // If box was pushed, don't move the player
-            position.x = bounds.x;
-            position.y = bounds.y;
-        } else {
-            // Update position
-            position.x += deltaX;
-            position.y += deltaY;
-
-            // Update collision bounds
-            bounds.x = position.x;
-            bounds.y = position.y;
-
-            // Check collision with map
-            if (gameMap.isColliding(bounds)) {
-                // Move back if collision occurred
-                position.x -= deltaX;
-                position.y -= deltaY;
-                bounds.x = position.x;
-                bounds.y = position.y;
-                velocity.x = 0;
-                velocity.y = 0;
+        // Try to push box first
+        if (!gameMap.tryPushBox(bounds, deltaX, deltaY)) {
+            // If not pushing box, handle normal movement
+            if (deltaX != 0) {
+                bounds.x += deltaX;
+                if (gameMap.isColliding(bounds)) {
+                    bounds.x -= deltaX;
+                }
             }
-
-            // Check collision with saw traps
-            if (!isInvincible && gameMap.isCollidingWithSawTrap(bounds)) {
-                takeDamage();
+            if (deltaY != 0) {
+                bounds.y += deltaY;
+                if (gameMap.isColliding(bounds)) {
+                    bounds.y -= deltaY;
+                }
             }
+        }
+
+        // Update position
+        position.x = bounds.x;
+        position.y = bounds.y;
+
+        // Update damage timer
+        if (damageTimer > 0) {
+            damageTimer -= deltaTime;
+            if (damageTimer <= 0) {
+                isInvincible = false;
+            }
+        }
+
+        // Check for saw trap collision
+        if (!isGhostMode && gameMap.isCollidingWithSawTrap(bounds)) {
+            takeDamage();
+        }
+
+        // Handle asset collisions and get teleport destination if any
+        Vector2 teleportDestination = gameMap.handleAssetCollision(bounds);
+        if (teleportDestination != null) {
+            teleport(teleportDestination.x, teleportDestination.y);
         }
 
         // Update current state
@@ -123,60 +118,12 @@ public class Player implements MonkeyObservable {
     }
 
     public void render(SpriteBatch batch) {
-        if (isGhostMode) {
-            // Use ghost textures based on facing direction
-            Texture currentGhostTexture = isFacingRight ? ghostRightTexture : ghostLeftTexture;
-            batch.draw(currentGhostTexture, position.x, position.y, 24, 24);
-        } else {
-            // Use normal textures
-            currentState.render(this, batch);
-        }
-    }
-
-    @Override
-    public void addObserver(MonkeyObserver observer) {
-        observers.add(observer);
-    }
-
-    @Override
-    public void removeObserver(MonkeyObserver observer) {
-        observers.remove(observer);
-    }
-
-    private void notifyHealthChanged() {
-        for (MonkeyObserver observer : observers) {
-            observer.onHealthChanged(hearts);
-        }
-    }
-
-    public void takeDamage() {
-        if (!isInvincible) {
-            hearts--;
-            isInvincible = true;
-            damageTimer = 0;
-            System.out.println("Player took damage! Hearts remaining: " + hearts);
-            notifyHealthChanged();
-
-            // Reset position when hit by saw
-            position.set(startPosition);
-            bounds.x = position.x;
-            bounds.y = position.y;
-
-            if (hearts <= 0) {
-                // Game over - reset the game
-                reset();
-                gameMap.reset();
-            }
-        }
-    }
-
-    public void setState(PlayerState state) {
-        this.currentState = state;
-        state.onEnter(this);
+        currentState.render(this, batch);
     }
 
     public void dispose() {
-        texture.dispose();
+        rightTexture.dispose();
+        leftTexture.dispose();
         ghostRightTexture.dispose();
         ghostLeftTexture.dispose();
     }
@@ -193,8 +140,93 @@ public class Player implements MonkeyObservable {
         return hearts;
     }
 
-    public boolean isFacingRight() {
-        return isFacingRight;
+    public void setHearts(int hearts) {
+        this.hearts = hearts;
+        if (observer != null) {
+            observer.onHeartsChanged(hearts);
+        }
+    }
+
+    public int getBananas() {
+        return bananas;
+    }
+
+    public void setBananas(int bananas) {
+        this.bananas = bananas;
+        if (observer != null) {
+            observer.onBananasChanged(bananas);
+        }
+    }
+
+    public boolean isJumping() {
+        return isJumping;
+    }
+
+    public void setJumping(boolean jumping) {
+        isJumping = jumping;
+    }
+
+    public float getJumpVelocity() {
+        return jumpVelocity;
+    }
+
+    public void setJumpVelocity(float jumpVelocity) {
+        this.jumpVelocity = jumpVelocity;
+    }
+
+    public float getGravity() {
+        return GRAVITY;
+    }
+
+    public float getJumpForce() {
+        return jumpVelocity;
+    }
+
+    public void takeDamage() {
+        if (!isInvincible) {
+            hearts--;
+            isInvincible = true;
+            damageTimer = DAMAGE_COOLDOWN;
+
+            // Teleport back to starting position
+            position.set(startX, startY);
+            bounds.x = startX;
+            bounds.y = startY;
+
+            if (observer != null) {
+                observer.onHeartsChanged(hearts);
+            }
+        }
+    }
+
+    public void teleport(float x, float y) {
+        position.set(x, y);
+        bounds.x = x;
+        bounds.y = y;
+    }
+
+    public void reset() {
+        position.set(startX, startY);
+        bounds.x = startX;
+        bounds.y = startY;
+        hearts = 3;
+        bananas = 0;
+        isInvincible = false;
+        damageTimer = 0;
+        if (observer != null) {
+            observer.onHeartsChanged(hearts);
+            observer.onBananasChanged(bananas);
+        }
+    }
+
+    public void addObserver(MonkeyObserver observer) {
+        this.observer = observer;
+    }
+
+    public void removeObserver(MonkeyObserver observer) {
+        if (this.observer == observer) {
+            this.observer = null;
+        }
     }
 
     public boolean isInvincible() {
@@ -205,45 +237,41 @@ public class Player implements MonkeyObservable {
         return damageTimer;
     }
 
-    public void reset() {
-        // Reset position to starting point
-        position.set(startPosition);
-        // Reset velocity
-        velocity.set(0, 0);
-        // Reset other states
-        isFacingRight = true;
-        hearts = 3;
-        isInvincible = false;
-        damageTimer = 0;
-        // Update collision bounds
-        bounds.x = position.x;
-        bounds.y = position.y;
-        // Reset state
-        setState(new PlayerNormalState());
-        // Notify observers of health reset
-        notifyHealthChanged();
-    }
-
-    public void resetState() {
-        setState(new PlayerNormalState());
-    }
-
-    public void teleport(float x, float y) {
-        position.set(x, y);
-        bounds.x = x;
-        bounds.y = y;
-        System.out.println("Player teleported to: " + x + "," + y);
-    }
-
-    public void setGhostMode(boolean ghostMode) {
-        this.isGhostMode = ghostMode;
-        // Notify observers about the state change
-        for (MonkeyObserver observer : observers) {
-            observer.onGhostModeChanged(ghostMode);
+    public void setState(MonkeyState state) {
+        if (this.currentState != null) {
+            this.currentState.onExit(this);
         }
+        this.currentState = state;
+        if (this.currentState != null) {
+            this.currentState.onEnter(this);
+        }
+    }
+
+    public boolean isFacingRight() {
+        return isFacingRight;
+    }
+
+    public Texture getGhostRightTexture() {
+        return ghostRightTexture;
+    }
+
+    public Texture getGhostLeftTexture() {
+        return ghostLeftTexture;
     }
 
     public boolean isGhostMode() {
         return isGhostMode;
+    }
+
+    public void setGhostMode(boolean ghostMode) {
+        this.isGhostMode = ghostMode;
+        if (ghostMode) {
+            setState(new GhostState());
+        } else {
+            setState(new NormalState());
+        }
+        if (observer != null) {
+            observer.onGhostModeChanged(ghostMode);
+        }
     }
 }

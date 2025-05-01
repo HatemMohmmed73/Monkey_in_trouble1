@@ -71,6 +71,7 @@
 72.png
 8.png
 9.png
+default.fnt
 ghost.png
 image.png
 libgdx.png
@@ -82,3 +83,4 @@ ui/font.fnt
 ui/uiskin.atlas
 ui/uiskin.json
 ui/uiskin.png
+uiskin.json

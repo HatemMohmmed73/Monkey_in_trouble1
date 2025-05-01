@@ -173,7 +173,7 @@ public class GameMap implements Disposable {
         if (teleportCooldown > 0) {
             teleportCooldown -= deltaTime;
             if (teleportCooldown <= 0) {
-                isCurrentlyTeleporting = false;  // Reset teleport state when cooldown ends
+                isCurrentlyTeleporting = false;
             }
         }
     }
@@ -315,6 +315,10 @@ public class GameMap implements Disposable {
                 texture.dispose();
             }
         }
+
+        for (SawTrap sawTrap : sawTraps) {
+            sawTrap.dispose();
+        }
     }
 
     public void reset() {
@@ -322,15 +326,9 @@ public class GameMap implements Disposable {
         // Reset boxes to original positions
         for (Box box : boxes) {
             Room room = rooms.get(box.roomIndex);
-            float worldY = (room.mapData.length - box.originalY - 1) * TILE_SIZE;
-            float newX = (box.originalX + room.offsetX) * TILE_SIZE;
-            float newY = worldY + (room.offsetY * TILE_SIZE);
-
-            System.out.println("Box original position: " + box.originalX + ", " + box.originalY);
-            System.out.println("Box new position: " + newX + ", " + newY);
-
-            box.bounds.x = newX;
-            box.bounds.y = newY;
+            room.mapData[box.originalY][box.originalX] = 2; // Reset to box tile
+            box.bounds.x = (box.originalX + room.offsetX) * TILE_SIZE;
+            box.bounds.y = (room.mapData.length - box.originalY - 1 + room.offsetY) * TILE_SIZE;
         }
 
         // Reset doors using stored original positions
@@ -364,6 +362,11 @@ public class GameMap implements Disposable {
         asset56Changed = false;  // Reset button state
         asset29Changed = false;  // Reset door state
 
+        // Reset saw traps
+        for (SawTrap sawTrap : sawTraps) {
+            sawTrap.reset();
+        }
+
         System.out.println("Map Reset - All doors closed and buttons reset!");
     }
 
@@ -387,6 +390,22 @@ public class GameMap implements Disposable {
                             asset56Changed = true;
                             System.out.println("Button (56) pressed at position: " + x + "," + y);
                             openDoor();
+                        } else if (tileId == 72) {
+                            if (player != null) {
+                                if (player.isGhostMode()) {
+                                    // If in ghost mode, destroy the asset 72 and return to normal state
+                                    room.setTile(x, y, 1); // Change to floor texture
+                                    player.setGhostMode(false);
+                                } else {
+                                    // If in normal mode, take damage
+                                    player.takeDamage();
+                                }
+                            }
+                        } else if (tileId == 63) {
+                            // Change monkey to ghost state when colliding with asset 63
+                            if (player != null) {
+                                player.setGhostMode(true);
+                            }
                         } else if (tileId == 34 && !isCurrentlyTeleporting) {
                             // Teleport to right top room
                             Vector2 destination = findTeleportDestination();
@@ -408,12 +427,6 @@ public class GameMap implements Disposable {
                                 return destination;
                             } else {
                                 System.out.println("Error: Could not find return teleport destination (tile 34)!");
-                            }
-                        } else if (tileId == 63) {
-                            // Transform into ghost mode only if not already in ghost mode
-                            if (player != null && !player.isGhostMode()) {
-                                System.out.println("Player collided with ghost transformation tile (63)");
-                                player.setGhostMode(true);
                             }
                         }
                     }

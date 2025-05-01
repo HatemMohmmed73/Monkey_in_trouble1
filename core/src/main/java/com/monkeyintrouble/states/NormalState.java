@@ -2,7 +2,7 @@ package com.monkeyintrouble.states;
 
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
-import com.monkeyintrouble.entities.Monkey;
+import com.monkeyintrouble.entities.Player;
 
 public class NormalState implements MonkeyState {
     private Texture normalLeftTexture;
@@ -14,24 +14,29 @@ public class NormalState implements MonkeyState {
     }
 
     @Override
-    public void update(Monkey monkey, float deltaTime) {
+    public void update(Player player, float deltaTime) {
         // Normal state doesn't need any special update logic
     }
 
     @Override
-    public void render(Monkey monkey, SpriteBatch batch) {
-        Texture currentTexture = monkey.isFacingRight() ? normalRightTexture : normalLeftTexture;
+    public void render(Player player, SpriteBatch batch) {
+        Texture currentTexture = player.isFacingRight() ? normalRightTexture : normalLeftTexture;
         batch.draw(currentTexture,
-            monkey.getPosition().x,
-            monkey.getPosition().y,
+            player.getPosition().x,
+            player.getPosition().y,
             24, // width
             24  // height
         );
     }
 
     @Override
-    public void onEnter(Monkey monkey) {
+    public void onEnter(Player player) {
         // Nothing special to do when entering normal state
+    }
+
+    @Override
+    public void onExit(Player player) {
+        // Nothing special to do when exiting normal state
     }
 
     public void dispose() {

@@ -6,6 +6,7 @@ import com.badlogic.gdx.Input.Keys;
 import com.monkeyintrouble.screens.GameScreen;
 
 public class MonkeyInTroubleGame extends Game {
+    public static final boolean DEBUG = false;
     private GameScreen gameScreen;
 
     @Override

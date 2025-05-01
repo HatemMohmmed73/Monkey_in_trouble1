@@ -1,7 +1,7 @@
 package com.monkeyintrouble.observers;
 
 public interface MonkeyObserver {
-    void onHealthChanged(int newHealth);
-    void onBananaCollected(int totalBananas);
+    void onHeartsChanged(int hearts);
+    void onBananasChanged(int bananas);
     void onGhostModeChanged(boolean isGhostMode);
 }
