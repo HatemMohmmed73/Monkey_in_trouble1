@@ -102,8 +102,8 @@ public class Player implements MonkeyObservable {
             }
         }
 
-        // Check for saw trap collision
-        if (!isGhostMode && gameMap.isCollidingWithSawTrap(bounds)) {
+        // Check for hazard collisions (saw traps and fire)
+        if (!isGhostMode && gameMap.isCollidingWithHazards(bounds)) {
             takeDamage();
         }
 

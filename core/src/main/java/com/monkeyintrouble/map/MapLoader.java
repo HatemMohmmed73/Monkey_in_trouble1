@@ -33,7 +33,7 @@ public class MapLoader {
     private static final int[][] LEVEL_1_RIGHT_BOTTOM = {
         {3, 5, 5, 5, 6},
         {8, 9, 37, 9, 11},
-        {8, 13, 62, 36,11},
+        {8, 13, 1, 36,11},
         {8, 69, 1, 70, 11},
         {8, 14, 1, 36, 11},
         {16, 17, 17, 17, 19}
