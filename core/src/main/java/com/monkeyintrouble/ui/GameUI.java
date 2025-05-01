@@ -29,6 +29,7 @@ public class GameUI implements MonkeyObserver {
     private final Stage stage;
     private final GameScreen gameScreen;
     private boolean isGameOver = false;
+    private boolean isGameWon = false;
     private Texture fullHeartTexture;
     private Texture emptyHeartTexture;
     private Texture bananaTexture;
@@ -71,6 +72,12 @@ public class GameUI implements MonkeyObserver {
         System.out.println("Ghost mode: " + isGhostMode);
     }
 
+    @Override
+    public void onGameWon() {
+        this.isGameWon = true;
+        System.out.println("Victory state updated in UI");
+    }
+
     public void render(SpriteBatch batch) {
         stage.act(Gdx.graphics.getDeltaTime());
         stage.draw();
@@ -82,18 +89,38 @@ public class GameUI implements MonkeyObserver {
         }
 
         // Draw bananas
-        for (int i = 0; i < 5; i++) { // Assuming max 5 bananas
+        for (int i = 0; i < 3; i++) { // Assuming max 5 bananas
             Texture bananaTex = (i < bananaCount) ? bananaTexture : emptyBananaTexture;
             batch.draw(bananaTex, Gdx.graphics.getWidth() - (5 - i) * BANANA_SPACING - 10,
                       Gdx.graphics.getHeight() - BANANA_SIZE - 10, BANANA_SIZE, BANANA_SIZE);
         }
 
-        // Draw game over text if needed
+        // Draw game over or victory text if needed
         if (isGameOver) {
             GlyphLayout layout = new GlyphLayout(font, "GAME OVER");
             float x = (Gdx.graphics.getWidth() - layout.width) / 2;
             float y = (Gdx.graphics.getHeight() + layout.height) / 2;
             font.draw(batch, "GAME OVER", x, y);
+
+            GlyphLayout restartLayout = new GlyphLayout(font, "Press R to restart");
+            float restartX = (Gdx.graphics.getWidth() - restartLayout.width) / 2;
+            float restartY = y - 40;
+            font.draw(batch, "Press R to restart", restartX, restartY);
+        } else if (isGameWon) {
+            GlyphLayout layout = new GlyphLayout(font, "VICTORY!");
+            float x = (Gdx.graphics.getWidth() - layout.width) / 2;
+            float y = (Gdx.graphics.getHeight() + layout.height) / 2;
+            font.draw(batch, "VICTORY!", x, y);
+
+            GlyphLayout congratsLayout = new GlyphLayout(font, "Congratulations!");
+            float congratsX = (Gdx.graphics.getWidth() - congratsLayout.width) / 2;
+            float congratsY = y - 40;
+            font.draw(batch, "Congratulations!", congratsX, congratsY);
+
+            GlyphLayout restartLayout = new GlyphLayout(font, "Press R to play again");
+            float restartX = (Gdx.graphics.getWidth() - restartLayout.width) / 2;
+            float restartY = congratsY - 40;
+            font.draw(batch, "Press R to play again", restartX, restartY);
         }
     }
 

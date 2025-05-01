@@ -36,6 +36,7 @@ public class GameMap implements Disposable {
     private static final float FIRE_SPAWN_INTERVAL = 2.0f; // Time between fire spawns
     private int currentFireIndex = 0; // Track which fire to spawn next
     private final Array<BoxTrap> boxTraps;
+    private boolean isGameWon = false;  // Add this at the top with other fields
 
     public static class Room {
         final int[][] mapData;
@@ -120,7 +121,7 @@ public class GameMap implements Disposable {
         rooms.add(new Room(rightBottomRoom, rightRoomsX, rightTopRoom.length));
 
         // Load tile textures
-        tileTextures = new Texture[74];
+        tileTextures = new Texture[75];
         for (int i = 0; i < tileTextures.length; i++) {
             try {
                 tileTextures[i] = new Texture(Gdx.files.internal(i + ".png"));
@@ -302,13 +303,13 @@ public class GameMap implements Disposable {
     public boolean isColliding(Rectangle bounds) {
         for (Room room : rooms) {
             for (Rectangle box : room.collisionBoxes) {
-                // Skip collision check for button (32.png)
+                // Skip collision check for button (32.png) and teleport point (69.png)
                 int tileX = (int)(box.x / TILE_SIZE) - room.offsetX;
                 int tileY = room.mapData.length - 1 - (int)(box.y / TILE_SIZE) + room.offsetY;
                 if (tileX >= 0 && tileX < room.mapData[0].length &&
                     tileY >= 0 && tileY < room.mapData.length) {
                     int tileId = room.mapData[tileY][tileX];
-                    if (tileId == 32) { // Button
+                    if (tileId == 32 || tileId == 69) { // Button or teleport point
                         continue;
                     }
                     // Check if this is a trap (31.png) and if it's triggered
@@ -484,6 +485,8 @@ public class GameMap implements Disposable {
     }
 
     public void reset() {
+        System.out.println("Resetting game...");
+        isGameWon = false;  // Reset victory state
         System.out.println("Resetting boxes...");
         // Reset boxes to original positions
         for (Box box : boxes) {
@@ -606,7 +609,18 @@ public class GameMap implements Disposable {
                     Rectangle tileBounds = new Rectangle(worldX, worldY, TILE_SIZE, TILE_SIZE);
 
                     if (tileBounds.overlaps(playerBounds)) {
-                        if (tileId == 56) {
+                        if (tileId == 50) {
+                            isGameWon = true;
+                            if (player != null && player.getObserver() != null) {
+                                player.getObserver().onGameWon();
+                            }
+                            System.out.println("*********************************");
+                            System.out.println("*           VICTORY!           *");
+                            System.out.println("*     Congratulations! You     *");
+                            System.out.println("*    have completed the game!  *");
+                            System.out.println("*********************************");
+                            return null;
+                        } else if (tileId == 56) {
                             asset56Changed = true;
                             System.out.println("Button (56) pressed at position: " + x + "," + y);
                             openDoor();
@@ -675,6 +689,35 @@ public class GameMap implements Disposable {
                                 return destination;
                             } else {
                                 System.out.println("Error: Could not find return teleport destination (tile 34)!");
+                            }
+                        } else if (tileId == 70) {
+                            // When monkey collides with asset 70, change all asset 74 tiles to asset 50
+                            List<Position> tilesToChange = new ArrayList<>();
+
+                            // First collect all positions that need to change
+                            for (int roomIndex = 0; roomIndex < rooms.size; roomIndex++) {
+                                Room searchRoom = rooms.get(roomIndex);
+                                for (int searchY = 0; searchY < searchRoom.mapData.length; searchY++) {
+                                    for (int searchX = 0; searchX < searchRoom.mapData[searchY].length; searchX++) {
+                                        if (searchRoom.mapData[searchY][searchX] == 74) {
+                                            tilesToChange.add(new Position(searchX, searchY, roomIndex));
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Then change all collected positions
+                            for (Position pos : tilesToChange) {
+                                Room targetRoom = rooms.get(pos.roomIndex);
+                                targetRoom.mapData[pos.y][pos.x] = 50;
+                                System.out.println("Changed asset 74 to 50 at position: " + pos.x + "," + pos.y + " in room " + pos.roomIndex);
+                            }
+
+                            // Drop a banana at the collision position if we haven't dropped all 3 yet
+                            if (totalBananasDropped < MAX_BANANAS && bananas.size < MAX_BANANAS) {
+                                bananas.add(new Vector2(worldX, worldY));
+                                totalBananasDropped++;
+                                System.out.println("Dropped banana " + totalBananasDropped + " of " + MAX_BANANAS + " at asset 70");
                             }
                         }
                     }
@@ -859,5 +902,9 @@ public class GameMap implements Disposable {
                 }
             }
         }
+    }
+
+    public boolean isGameWon() {
+        return isGameWon;
     }
 }

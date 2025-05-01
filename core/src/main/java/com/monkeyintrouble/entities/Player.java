@@ -274,4 +274,8 @@ public class Player implements MonkeyObservable {
             observer.onGhostModeChanged(ghostMode);
         }
     }
+
+    public MonkeyObserver getObserver() {
+        return observer;
+    }
 }
