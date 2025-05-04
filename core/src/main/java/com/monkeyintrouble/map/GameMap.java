@@ -39,6 +39,8 @@ public class GameMap implements Disposable {
     private boolean isGameWon = false;  // Add this at the top with other fields
     private final Array<Vector2> ghostPositions;  // Add this with other fields
     private final List<Position> originalAsset74Positions = new ArrayList<>();
+    private final List<Position> originalTrapPositions = new ArrayList<>();
+    private final List<Position> originalBox39Positions = new ArrayList<>();
 
     public static class Room {
         final int[][] mapData;
@@ -161,6 +163,12 @@ public class GameMap implements Disposable {
                 for (int x = 0; x < room.mapData[y].length; x++) {
                     if (room.mapData[y][x] == 74) {
                         originalAsset74Positions.add(new Position(x, y, roomIndex));
+                    }
+                    if (room.mapData[y][x] == 31) {
+                        originalTrapPositions.add(new Position(x, y, roomIndex));
+                    }
+                    if (room.mapData[y][x] == 39) {
+                        originalBox39Positions.add(new Position(x, y, roomIndex));
                     }
                 }
             }
@@ -561,7 +569,7 @@ public class GameMap implements Disposable {
         // Reset boxes to original positions
         for (Box box : boxes) {
             Room room = rooms.get(box.roomIndex);
-            room.mapData[box.originalY][box.originalX] = 2; // Reset to box tile
+            room.mapData[box.originalY][box.originalX] = 1; // Always set to floor under the box
             box.bounds.x = (box.originalX + room.offsetX) * TILE_SIZE;
             box.bounds.y = (room.mapData.length - box.originalY - 1 + room.offsetY) * TILE_SIZE;
         }
@@ -634,6 +642,17 @@ public class GameMap implements Disposable {
         for (Position pos : originalAsset74Positions) {
             Room room = rooms.get(pos.roomIndex);
             room.mapData[pos.y][pos.x] = 74;
+        }
+
+        // Restore all original trap (31) positions
+        for (Position pos : originalTrapPositions) {
+            Room room = rooms.get(pos.roomIndex);
+            room.mapData[pos.y][pos.x] = 31;
+        }
+        // Restore all original box (39) positions
+        for (Position pos : originalBox39Positions) {
+            Room room = rooms.get(pos.roomIndex);
+            room.mapData[pos.y][pos.x] = 39;
         }
 
         System.out.println("Map Reset - All doors closed, buttons reset, and ghost restored!");

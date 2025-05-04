@@ -43,7 +43,8 @@ public enum TileType {
     WALL_MOSS(67),
     WALL_SLIME(68),
     WALL_CHAINS(69),
-    WALL_TORCH(70);
+    WALL_TORCH(70),
+    BLOCK(2);
 
     private final int tileId;
 
@@ -72,7 +73,7 @@ public enum TileType {
             this == WALL_SPECIAL || this == WALL_DAMAGED || this == WALL_PILLAR ||
             this == WALL_WINDOW || this == SPIKES || this == WALL_SPECIAL_2 ||
             this == WALL_DARK || this == WALL_CHAINS || this == BARS || this == WALL_22 ||
-            this == TRAP;
+            this == TRAP || this == WALL_INNER_CORNER || this == BLOCK;
     }
 
     public boolean isPushable() {
