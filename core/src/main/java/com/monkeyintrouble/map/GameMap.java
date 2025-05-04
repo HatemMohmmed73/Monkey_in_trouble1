@@ -37,6 +37,8 @@ public class GameMap implements Disposable {
     private int currentFireIndex = 0; // Track which fire to spawn next
     private final Array<BoxTrap> boxTraps;
     private boolean isGameWon = false;  // Add this at the top with other fields
+    private final Array<Vector2> ghostPositions;  // Add this with other fields
+    private final List<Position> originalAsset74Positions = new ArrayList<>();
 
     public static class Room {
         final int[][] mapData;
@@ -107,6 +109,7 @@ public class GameMap implements Disposable {
         this.fireStartPositions = new Array<>();
         this.bananas = new Array<>();
         this.boxTraps = new Array<>();
+        this.ghostPositions = new Array<>();  // Initialize ghost positions array
 
         // Add main room at origin (0,0)
         rooms.add(new Room(mainRoom, 0, 0));
@@ -138,6 +141,30 @@ public class GameMap implements Disposable {
 
         // Process map data to initialize box traps
         processMapData();
+
+        // Store initial ghost positions
+        for (Room room : rooms) {
+            for (int y = 0; y < room.mapData.length; y++) {
+                for (int x = 0; x < room.mapData[y].length; x++) {
+                    if (room.mapData[y][x] == 72) { // Ghost tile
+                        float worldX = (x + room.offsetX) * TILE_SIZE;
+                        float worldY = (room.mapData.length - y - 1) * TILE_SIZE + (room.offsetY * TILE_SIZE);
+                        ghostPositions.add(new Vector2(worldX, worldY));
+                    }
+                }
+            }
+        }
+        // Store original asset 74 positions
+        for (int roomIndex = 0; roomIndex < rooms.size; roomIndex++) {
+            Room room = rooms.get(roomIndex);
+            for (int y = 0; y < room.mapData.length; y++) {
+                for (int x = 0; x < room.mapData[y].length; x++) {
+                    if (room.mapData[y][x] == 74) {
+                        originalAsset74Positions.add(new Position(x, y, roomIndex));
+                    }
+                }
+            }
+        }
     }
 
     private void createCollisionBoxes(Room room, int roomIndex) {
@@ -157,8 +184,8 @@ public class GameMap implements Disposable {
                     originalDoorPositions.add(new Position(x, y, roomIndex));
                 }
 
-                // Skip collision box for button (32.png)
-                if (tileId == 32) {
+                // Skip collision box for button (32.png) and inactive trap (30.png)
+                if (tileId == 32 || tileId == 30) {
                     continue;
                 }
 
@@ -223,6 +250,49 @@ public class GameMap implements Disposable {
                 isCurrentlyTeleporting = false;
             }
         }
+
+        // --- NEW: Check if any box overlaps any button (tile 32) ---
+        for (Box box : boxes) {
+            for (Room room : rooms) {
+                for (int y = 0; y < room.mapData.length; y++) {
+                    for (int x = 0; x < room.mapData[y].length; x++) {
+                        if (room.mapData[y][x] == 32) { // Button tile
+                            float buttonX = (x + room.offsetX) * TILE_SIZE;
+                            float buttonY = (room.mapData.length - y - 1) * TILE_SIZE + (room.offsetY * TILE_SIZE);
+                            Rectangle buttonRect = new Rectangle(buttonX, buttonY, TILE_SIZE, TILE_SIZE);
+                            if (box.bounds.overlaps(buttonRect)) {
+                                // Change asset 31 (trap) to 30 and asset 39 (box) to 41 in the same room
+                                for (int yy = 0; yy < room.mapData.length; yy++) {
+                                    for (int xx = 0; xx < room.mapData[yy].length; xx++) {
+                                        if (room.mapData[yy][xx] == 31) {
+                                            room.mapData[yy][xx] = 30; // Change trap to inactive
+                                            // Remove the collision box for this tile
+                                            float trapWorldY = (room.mapData.length - yy - 1) * TILE_SIZE;
+                                            float trapWorldX = (xx + room.offsetX) * TILE_SIZE;
+                                            trapWorldY += (room.offsetY * TILE_SIZE);
+                                            Rectangle trapBox = new Rectangle(trapWorldX, trapWorldY, TILE_SIZE, TILE_SIZE);
+                                            // Remove any collision box that matches this position
+                                            for (int i = 0; i < room.collisionBoxes.size; i++) {
+                                                Rectangle existingBox = room.collisionBoxes.get(i);
+                                                if (existingBox.x == trapBox.x && existingBox.y == trapBox.y) {
+                                                    room.collisionBoxes.removeIndex(i);
+                                                    break;
+                                                }
+                                            }
+                                        }
+                                        if (room.mapData[yy][xx] == 39) {
+                                            room.mapData[yy][xx] = 41; // Change box to pressed
+                                        }
+                                    }
+                                }
+                                System.out.println("Box at (" + box.bounds.x + ", " + box.bounds.y + ") is on button at (" + buttonX + ", " + buttonY + ")! Trap and box updated.");
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        // --- END NEW ---
 
         for (BoxTrap trap : boxTraps) {
             trap.update(deltaTime);
@@ -541,7 +611,32 @@ public class GameMap implements Disposable {
             sawTrap.reset();
         }
 
-        System.out.println("Map Reset - All doors closed and buttons reset!");
+        // Reset ghost (asset 72) in all rooms
+        for (Room room : rooms) {
+            for (int y = 0; y < room.mapData.length; y++) {
+                for (int x = 0; x < room.mapData[y].length; x++) {
+                    if (room.mapData[y][x] == 1) { // If it's a floor tile
+                        // Check if this was originally a ghost tile
+                        float worldX = (x + room.offsetX) * TILE_SIZE;
+                        float worldY = (room.mapData.length - y - 1) * TILE_SIZE + (room.offsetY * TILE_SIZE);
+                        for (Vector2 ghostPos : ghostPositions) {
+                            if (Math.abs(ghostPos.x - worldX) < 1 && Math.abs(ghostPos.y - worldY) < 1) {
+                                room.mapData[y][x] = 72; // Restore ghost tile
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Restore all original asset 74 positions
+        for (Position pos : originalAsset74Positions) {
+            Room room = rooms.get(pos.roomIndex);
+            room.mapData[pos.y][pos.x] = 74;
+        }
+
+        System.out.println("Map Reset - All doors closed, buttons reset, and ghost restored!");
     }
 
     private Vector2 findTeleportTo69Destination() {
@@ -607,6 +702,17 @@ public class GameMap implements Disposable {
                     float worldY = (room.mapData.length - y - 1) * TILE_SIZE + (room.offsetY * TILE_SIZE);
 
                     Rectangle tileBounds = new Rectangle(worldX, worldY, TILE_SIZE, TILE_SIZE);
+
+                    // NEW: If monkey collides with asset 41, change to 40 and drop a banana
+                    if (tileId == 41 && tileBounds.overlaps(playerBounds)) {
+                        room.mapData[y][x] = 40; // Change to asset 40
+                        if (totalBananasDropped < MAX_BANANAS && bananas.size < MAX_BANANAS) {
+                            bananas.add(new Vector2(worldX, worldY));
+                            totalBananasDropped++;
+                            System.out.println("Dropped banana " + totalBananasDropped + " of " + MAX_BANANAS + " at asset 41");
+                        }
+                    }
+                    // END NEW
 
                     if (tileBounds.overlaps(playerBounds)) {
                         if (tileId == 50) {

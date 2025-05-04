@@ -34,6 +34,7 @@ public class GameUI implements MonkeyObserver {
     private Texture emptyHeartTexture;
     private Texture bananaTexture;
     private Texture emptyBananaTexture;
+    private MonkeyObserver observer;
 
     public GameUI(GameScreen gameScreen) {
         this.gameScreen = gameScreen;
@@ -121,6 +122,23 @@ public class GameUI implements MonkeyObserver {
             float restartX = (Gdx.graphics.getWidth() - restartLayout.width) / 2;
             float restartY = congratsY - 40;
             font.draw(batch, "Press R to play again", restartX, restartY);
+        }
+
+        // Always show 'Click R to restart the game' at the bottom
+        GlyphLayout bottomMsg = new GlyphLayout(font, "Click R to restart the game");
+        float bottomX = (Gdx.graphics.getWidth() - bottomMsg.width) / 2;
+        float bottomY = 20 + bottomMsg.height; // 20 pixels from bottom
+        font.draw(batch, "Click R to restart the game", bottomX, bottomY);
+    }
+
+    public void reset() {
+        isGameOver = false;
+        isGameWon = false;
+        hearts = MAX_HEARTS;
+        bananaCount = 0;
+        if (observer != null) {
+            observer.onHeartsChanged(hearts);
+            observer.onBananasChanged(bananaCount);
         }
     }
 

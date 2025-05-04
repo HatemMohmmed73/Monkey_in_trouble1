@@ -79,7 +79,7 @@ public class SawTrap implements Disposable {
         batch.draw(tileTextures[TRAP_RIGHT], startX + (2 * TILE_SIZE), y, TILE_SIZE, TILE_SIZE);
 
         // Draw the saw at its current position
-        int sawTextureIndex = SAW_LEFT + currentPosition;
+        int sawTextureIndex = SAW_LEFT + (NUM_POSITIONS - 1 - currentPosition);
         batch.draw(tileTextures[sawTextureIndex], currentX, y, TILE_SIZE, TILE_SIZE);
     }
 

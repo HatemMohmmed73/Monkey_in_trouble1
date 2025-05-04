@@ -213,6 +213,7 @@ public class Player implements MonkeyObservable {
         bananas = 0;
         isInvincible = false;
         damageTimer = 0;
+        setGhostMode(false);
         if (observer != null) {
             observer.onHeartsChanged(hearts);
             observer.onBananasChanged(bananas);

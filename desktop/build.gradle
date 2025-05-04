@@ -8,7 +8,7 @@ repositories {
 }
 
 dependencies {
-  api project(":core")
+  implementation project(":core")
   api "com.badlogicgames.gdx:gdx-backend-lwjgl3:$gdxVersion"
   api "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-desktop"
   api "com.badlogicgames.gdx:gdx-box2d-platform:$gdxVersion:natives-desktop"

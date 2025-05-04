@@ -49,6 +49,11 @@ public class GameScreen implements Screen {
 
     @Override
     public void render(float delta) {
+        // Handle restart key
+        if (Gdx.input.isKeyJustPressed(com.badlogic.gdx.Input.Keys.R)) {
+            reset();
+            ui.reset();
+        }
         // Update game state
         player.update(delta);
         gameMap.update(delta);
