@@ -17,7 +17,9 @@ dependencies {
 
 application {
   mainClass = "com.monkeyintrouble.desktop.DesktopLauncher"
-  applicationDefaultJvmArgs = ["-XstartOnFirstThread"]
+  if (org.gradle.internal.os.OperatingSystem.current().isMacOsX()) {
+    applicationDefaultJvmArgs = ["-XstartOnFirstThread"]
+  }
 }
 
 java {

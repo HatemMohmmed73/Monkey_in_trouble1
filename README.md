@@ -1,36 +1,104 @@
-# MonkeyInTrouble
+# Monkey In Trouble
 
-A [libGDX](https://libgdx.com/) project generated with [gdx-liftoff](https://github.com/libgdx/gdx-liftoff).
+A small LibGDX desktop game where you guide a monkey through tile-based rooms, collect items, and avoid hazards like saws and fire. Some rooms include simple puzzles (e.g., buttons, boxes, traps) that you need to interact with to progress.
 
-This project was generated with a template including simple application launchers and an `ApplicationAdapter` extension that draws libGDX logo.
+## Features
+- LibGDX + LWJGL3 desktop game
+- Tile-based maps with hazards (saws, fire) and interactables (boxes, buttons, traps)
+- Lightweight: runs with Java 11+ via Gradle wrapper
+- Docker support for quick, dependency-free runs
 
-## Platforms
+---
 
-- `core`: Main module with the application logic shared by all platforms.
-- `lwjgl3`: Primary desktop platform using LWJGL3; was called 'desktop' in older docs.
-- `html`: Web platform using GWT and WebGL. Supports only Java projects.
+## Run the Game (Native)
 
-## Gradle
+Requirements:
+- Java 11+ (OpenJDK 11 recommended)
+- Linux/macOS/Windows
 
-This project uses [Gradle](https://gradle.org/) to manage dependencies.
-The Gradle wrapper was included, so you can run Gradle tasks using `gradlew.bat` or `./gradlew` commands.
-Useful Gradle tasks and flags:
+Commands (from the project root):
+```bash
+# Make sure the Gradle wrapper is executable (Linux/macOS)
+chmod +x gradlew
 
-- `--continue`: when using this flag, errors will not stop the tasks from running.
-- `--daemon`: thanks to this flag, Gradle daemon will be used to run chosen tasks.
-- `--offline`: when using this flag, cached dependency archives will be used.
-- `--refresh-dependencies`: this flag forces validation of all dependencies. Useful for snapshot versions.
-- `build`: builds sources and archives of every project.
-- `cleanEclipse`: removes Eclipse project data.
-- `cleanIdea`: removes IntelliJ project data.
-- `clean`: removes `build` folders, which store compiled classes and built archives.
-- `eclipse`: generates Eclipse project data.
-- `html:dist`: compiles GWT sources. The compiled application can be found at `html/build/dist`: you can use any HTTP server to deploy it.
-- `html:superDev`: compiles GWT sources and runs the application in SuperDev mode. It will be available at [localhost:8080/html](http://localhost:8080/html). Use only during development.
-- `idea`: generates IntelliJ project data.
-- `lwjgl3:jar`: builds application's runnable jar, which can be found at `lwjgl3/build/libs`.
-- `lwjgl3:run`: starts the application.
-- `test`: runs unit tests (if any).
+# Run the desktop game
+./gradlew desktop:run
+```
+Notes:
+- macOS-only JVM flag `-XstartOnFirstThread` is applied automatically by the build script.
+- Assets are wired to the desktop run task; no extra setup needed.
 
-Note that most tasks that are not specific to a single project can be run with `name:` prefix, where the `name` should be replaced with the ID of a specific project.
-For example, `core:clean` removes `build` folder only from the `core` project.
+---
+
+## Run the Game (Docker)
+
+You can run the game inside a container without installing Java or Gradle. The container is configured to forward the game window to your desktop via X11.
+
+Build the image:
+```bash
+docker build -t monkey-in-trouble .
+```
+Allow Docker to talk to your X server (Linux/X11):
+```bash
+xhost +local:docker
+```
+Run the game:
+```bash
+docker run -it --rm \
+  -e DISPLAY=$DISPLAY \
+  -v /tmp/.X11-unix:/tmp/.X11-unix \
+  monkey-in-trouble
+```
+After you finish (optional security step):
+```bash
+xhost -local:docker
+```
+Notes:
+- The container sets its working directory to `/app/assets` so the game can find resources.
+- This guide assumes an X11 session. On Wayland, you may need XWayland or alternatives (e.g., `--device /dev/dri` and different display sharing solutions).
+
+Troubleshooting X11:
+```bash
+# Verify X11 forwarding by running xeyes (should show a small window)
+docker run -it --rm -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix x11-apps xeyes
+
+# Check your session type on the host
+echo $XDG_SESSION_TYPE   # should print: x11
+```
+
+---
+
+## Common Issues
+- JVM error `Unrecognized option: -XstartOnFirstThread` on Linux/Windows:
+  - Fixed in this repo: the flag is only applied on macOS.
+- No game window when running in Docker:
+  - Ensure you ran `xhost +local:docker`.
+  - Confirm you are on X11 (`echo $XDG_SESSION_TYPE` → `x11`).
+  - Test with `x11-apps xeyes` as shown above.
+
+---
+
+## Project Layout
+```
+assets/                # Shared game assets (images, fonts, UI skins)
+core/                  # Core game logic (entities, map, screens, states, UI)
+desktop/               # Desktop launcher + platform configuration
+lwjgl3/                # Alternative LWJGL3 launcher (not used by default)
+build.gradle           # Root Gradle build
+settings.gradle        # Declares modules (core, desktop)
+```
+
+---
+
+## Developer Notes
+- Run tasks:
+  - `./gradlew desktop:run` — run the game
+  - `./gradlew build` — build all modules
+  - `./gradlew :desktop:tasks` — list desktop tasks
+- Java toolchain: Java 11
+- Assets are included on the desktop classpath via `desktop/build.gradle` and the run task sets the working directory appropriately.
+
+---
+
+## License
+Provide your license here if required.
